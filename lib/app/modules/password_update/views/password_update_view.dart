@@ -1,3 +1,4 @@
+import 'package:dealer_mobil/app/components/loading_animation.dart';
 import 'package:dealer_mobil/app/utils/app_colors.dart';
 import 'package:dealer_mobil/app/utils/app_responsive.dart';
 import 'package:dealer_mobil/app/utils/app_text.dart';
@@ -32,7 +33,14 @@ class PasswordUpdateView extends GetView<PasswordUpdateController> {
           onPressed: () => Get.back(),
         ),
       ),
-      body: _buildBody(context),
+      body: Obx(() => controller.isLoading.value
+          ? Center(
+              child: AnimationLoading(
+                width: AppResponsive.getResponsiveSize(150),
+                height: AppResponsive.getResponsiveSize(150),
+              ),
+            )
+          : _buildBody(context)),
     );
   }
 

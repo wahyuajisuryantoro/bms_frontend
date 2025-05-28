@@ -26,6 +26,8 @@ import '../modules/password_update/bindings/password_update_binding.dart';
 import '../modules/password_update/views/password_update_view.dart';
 import '../modules/register/bindings/register_binding.dart';
 import '../modules/register/views/register_view.dart';
+import '../modules/sukses_verifikasi_email/bindings/sukses_verifikasi_email_binding.dart';
+import '../modules/sukses_verifikasi_email/views/sukses_verifikasi_email_view.dart';
 import '../modules/tentang/bindings/tentang_binding.dart';
 import '../modules/tentang/views/tentang_view.dart';
 
@@ -34,7 +36,7 @@ part 'app_routes.dart';
 class AppPages {
   AppPages._();
 
-  static const INITIAL = Routes.HOME;
+  static const INITIAL = Routes.REGISTER;
 
   static final routes = [
     GetPage(
@@ -107,6 +109,11 @@ class AppPages {
       name: _Paths.KEBIJAKAN_DAN_PRIVASI,
       page: () => const KebijakanDanPrivasiView(),
       binding: KebijakanDanPrivasiBinding(),
+    ),
+    GetPage(
+      name: _Paths.SUKSES_VERIFIKASI_EMAIL,
+      page: () => const SuksesVerifikasiEmailView(),
+      binding: SuksesVerifikasiEmailBinding(),
     ),
   ];
 }

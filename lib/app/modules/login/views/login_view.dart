@@ -2,9 +2,7 @@ import 'package:dealer_mobil/app/routes/app_pages.dart';
 import 'package:dealer_mobil/app/utils/app_colors.dart';
 import 'package:dealer_mobil/app/utils/app_responsive.dart';
 import 'package:dealer_mobil/app/utils/app_text.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-
 import 'package:get/get.dart';
 import 'package:remixicon/remixicon.dart';
 
@@ -25,6 +23,7 @@ class LoginView extends GetView<LoginController> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // Back Button
                 InkWell(
                   onTap: () => Get.back(),
                   child: const Icon(
@@ -34,6 +33,8 @@ class LoginView extends GetView<LoginController> {
                   ),
                 ),
                 SizedBox(height: AppResponsive.h(4)),
+                
+                // Header Text
                 Text(
                   'Selamat Datang\nKembali!',
                   style: AppText.h3(color: Colors.white),
@@ -44,6 +45,8 @@ class LoginView extends GetView<LoginController> {
                   style: AppText.p(color: Colors.white.withOpacity(0.9)),
                 ),
                 SizedBox(height: AppResponsive.h(5)),
+                
+                // Email Field
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -54,13 +57,15 @@ class LoginView extends GetView<LoginController> {
                         style: AppText.small(color: Colors.white),
                       ),
                     ),
-                    Container(
+                    Obx(() => Container(
                       height: AppResponsive.h(7),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.3),
+                          color: controller.emailError.value
+                            ? Colors.red
+                            : Colors.white.withOpacity(0.3),
                           width: 1,
                         ),
                       ),
@@ -68,19 +73,42 @@ class LoginView extends GetView<LoginController> {
                         controller: controller.emailController,
                         cursorColor: AppColors.secondary,
                         style: AppText.p(color: Colors.white),
+                        keyboardType: TextInputType.emailAddress,
                         decoration: InputDecoration(
                           border: InputBorder.none,
                           contentPadding: AppResponsive.padding(
                               horizontal: 3, vertical: 1.5),
                           hintText: 'Masukkan email',
-                          hintStyle:
-                              AppText.p(color: Colors.white.withOpacity(0.5)),
+                          hintStyle: AppText.p(color: Colors.white.withOpacity(0.5)),
+                          prefixIcon: Icon(
+                            Icons.email_outlined,
+                            color: Colors.white.withOpacity(0.7),
+                            size: 20,
+                          ),
                         ),
+                        onChanged: (_) {
+                          if (controller.emailError.value) {
+                            controller.emailError.value = false;
+                          }
+                        },
                       ),
+                    )),
+                    // Email Error Text
+                    Obx(() => controller.emailError.value
+                      ? Padding(
+                          padding: AppResponsive.padding(left: 2, top: 0.5),
+                          child: Text(
+                            controller.emailErrorText.value,
+                            style: AppText.small(color: Colors.red),
+                          ),
+                        )
+                      : const SizedBox.shrink()
                     ),
                   ],
                 ),
                 SizedBox(height: AppResponsive.h(3)),
+                
+                // Password Field
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -91,19 +119,21 @@ class LoginView extends GetView<LoginController> {
                         style: AppText.small(color: Colors.white),
                       ),
                     ),
-                    Container(
+                    Obx(() => Container(
                       height: AppResponsive.h(7),
                       decoration: BoxDecoration(
                         color: Colors.white.withOpacity(0.1),
                         borderRadius: BorderRadius.circular(10),
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.3),
+                          color: controller.passwordError.value
+                            ? Colors.red
+                            : Colors.white.withOpacity(0.3),
                           width: 1,
                         ),
                       ),
                       child: TextField(
                         controller: controller.passwordController,
-                        obscureText: true,
+                        obscureText: !controller.passwordVisible.value,
                         cursorColor: AppColors.secondary,
                         style: AppText.p(color: Colors.white),
                         decoration: InputDecoration(
@@ -111,19 +141,66 @@ class LoginView extends GetView<LoginController> {
                           contentPadding: AppResponsive.padding(
                               horizontal: 3, vertical: 1.5),
                           hintText: 'Masukkan kata sandi',
-                          hintStyle:
-                              AppText.p(color: Colors.white.withOpacity(0.5)),
+                          hintStyle: AppText.p(color: Colors.white.withOpacity(0.5)),
+                          prefixIcon: Icon(
+                            Icons.lock_outline,
+                            color: Colors.white.withOpacity(0.7),
+                            size: 20,
+                          ),
+                          suffixIcon: InkWell(
+                            onTap: () => controller.togglePasswordVisibility(),
+                            child: Icon(
+                              controller.passwordVisible.value
+                                ? Icons.visibility_outlined
+                                : Icons.visibility_off_outlined,
+                              color: Colors.white.withOpacity(0.7),
+                              size: 20,
+                            ),
+                          ),
                         ),
+                        onChanged: (_) {
+                          if (controller.passwordError.value) {
+                            controller.passwordError.value = false;
+                          }
+                        },
                       ),
+                    )),
+                    // Password Error Text
+                    Obx(() => controller.passwordError.value
+                      ? Padding(
+                          padding: AppResponsive.padding(left: 2, top: 0.5),
+                          child: Text(
+                            controller.passwordErrorText.value,
+                            style: AppText.small(color: Colors.red),
+                          ),
+                        )
+                      : const SizedBox.shrink()
                     ),
                   ],
                 ),
-                SizedBox(height: AppResponsive.h(4)),
-                SizedBox(
+                
+                // Forgot Password Link
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: () => controller.forgotPassword(),
+                    child: Text(
+                      'Lupa Kata Sandi?',
+                      style: AppText.small(color: AppColors.secondary),
+                    ),
+                  ),
+                ),
+                
+                SizedBox(height: AppResponsive.h(2)),
+                
+                // Login Button
+                Obx(() => SizedBox(
                   width: double.infinity,
                   height: AppResponsive.h(6),
                   child: ElevatedButton(
-                    onPressed: () => controller.login(),
+                    onPressed: controller.isLoading.value
+                      ? null
+                      : () => controller.login(),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: AppColors.primary,
@@ -132,13 +209,20 @@ class LoginView extends GetView<LoginController> {
                       ),
                       elevation: 0,
                     ),
-                    child: Text(
-                      'Masuk',
-                      style: AppText.button(color: AppColors.primary),
-                    ),
+                    child: controller.isLoading.value
+                      ? const CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                        )
+                      : Text(
+                          'Masuk',
+                          style: AppText.button(color: AppColors.primary),
+                        ),
                   ),
-                ),
+                )),
+                
                 SizedBox(height: AppResponsive.h(2)),
+                
+                // Register Link
                 Center(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -148,9 +232,7 @@ class LoginView extends GetView<LoginController> {
                         style: AppText.small(color: Colors.white),
                       ),
                       InkWell(
-                        onTap: () {
-                          Get.toNamed(Routes.REGISTER);
-                        },
+                        onTap: () => controller.goToRegister(),
                         child: Text(
                           'Daftar Sekarang',
                           style: AppText.smallBold(color: Colors.white),

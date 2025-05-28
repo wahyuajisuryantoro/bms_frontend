@@ -1,3 +1,4 @@
+import 'package:dealer_mobil/app/helpers/currency_formatter.dart';
 import 'package:dealer_mobil/app/utils/app_colors.dart';
 import 'package:dealer_mobil/app/utils/app_responsive.dart';
 import 'package:dealer_mobil/app/utils/app_text.dart';
@@ -13,120 +14,233 @@ class FavoritView extends GetView<FavoritController> {
   @override
   Widget build(BuildContext context) {
     AppResponsive().init(context);
-    
+
     return Scaffold(
       backgroundColor: AppColors.secondary,
-      appBar: AppBar(
-        title: Text(
-          'Mobil Favorit',
-          style: AppText.h5(color: AppColors.dark),
-        ),
-        backgroundColor: AppColors.secondary,
-        elevation: 0,
-        centerTitle: true,
-        actions: [
-          Obx(() => controller.favoriteCars.isEmpty
-              ? SizedBox()
-              : IconButton(
-                  onPressed: () {
-                    // Konfirmasi hapus semua
-                    Get.dialog(
-                      AlertDialog(
-                        title: Text(
-                          'Hapus Semua Favorit',
-                          style: AppText.h5(color: AppColors.dark),
-                        ),
-                        content: Text(
-                          'Apakah Anda yakin ingin menghapus semua mobil favorit?',
-                          style: AppText.p(color: AppColors.dark),
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Get.back(),
-                            child: Text(
-                              'Batal',
-                              style: AppText.button(color: AppColors.grey),
-                            ),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              controller.favoriteCars.clear();
-                              controller.saveFavorites();
-                              Get.back();
-                              Get.snackbar(
-                                'Favorit',
-                                'Semua favorit berhasil dihapus',
-                                backgroundColor: Colors.red,
-                                colorText: Colors.white,
-                                snackPosition: SnackPosition.BOTTOM,
-                                margin: EdgeInsets.all(20),
-                                duration: Duration(seconds: 2),
-                              );
-                            },
-                            child: Text(
-                              'Hapus',
-                              style: AppText.button(color: AppColors.danger),
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
+      appBar: _buildAppBar(),
+      body: Obx(() {
+        if (controller.isLoading.value) {
+          return _buildLoadingState();
+        }
+
+        if (controller.isError.value) {
+          return _buildErrorState();
+        }
+
+        return controller.favoriteCars.isEmpty
+            ? _buildEmptyState()
+            : RefreshIndicator(
+                onRefresh: controller.refreshFavorites,
+                color: AppColors.primary,
+                child: _buildFavoritList(),
+              );
+      }),
+      bottomNavigationBar: CustomBottomNavigationBar(),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar() {
+    return AppBar(
+      title: Text(
+        'Mobil Favorit',
+        style: AppText.h4(color: AppColors.dark),
+      ),
+      backgroundColor: AppColors.secondary,
+      elevation: 0,
+      centerTitle: true,
+      automaticallyImplyLeading: false,
+      actions: [
+        Obx(() => controller.favoriteCars.isEmpty
+            ? SizedBox()
+            : Container(
+                margin: EdgeInsets.only(right: AppResponsive.w(4)),
+                child: IconButton(
+                  onPressed: () => _showClearAllDialog(),
+                  style: IconButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
                   icon: Icon(
                     Remix.delete_bin_line,
-                    color: AppColors.dark,
+                    color: AppColors.danger,
+                    size: AppResponsive.getResponsiveSize(20),
                   ),
-                )),
+                ),
+              )),
+      ],
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            padding: EdgeInsets.all(AppResponsive.w(6)),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.shadow.withOpacity(0.1),
+                  blurRadius: 20,
+                  offset: Offset(0, 4),
+                ),
+              ],
+            ),
+            child: CircularProgressIndicator(
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+              strokeWidth: 3,
+            ),
+          ),
+          SizedBox(height: AppResponsive.h(3)),
+          Text(
+            'Memuat favorit Anda...',
+            style: AppText.bodyMedium(color: AppColors.grey),
+          ),
         ],
       ),
-      body: Obx(
-        () => controller.favoriteCars.isEmpty
-            ? _buildEmptyState()
-            : _buildFavoritList(),
+    );
+  }
+
+  Widget _buildErrorState() {
+    return Center(
+      child: Container(
+        margin: AppResponsive.margin(horizontal: 6),
+        padding: AppResponsive.padding(all: 6),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius:
+              BorderRadius.circular(AppResponsive.getResponsiveSize(20)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.shadow.withOpacity(0.1),
+              blurRadius: 20,
+              offset: Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: EdgeInsets.all(AppResponsive.w(4)),
+              decoration: BoxDecoration(
+                color: AppColors.danger.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Remix.wifi_off_line,
+                size: AppResponsive.getResponsiveSize(40),
+                color: AppColors.danger,
+              ),
+            ),
+            SizedBox(height: AppResponsive.h(2)),
+            Text(
+              'Oops! Ada Masalah',
+              style: AppText.h5(color: AppColors.dark),
+            ),
+            SizedBox(height: AppResponsive.h(1)),
+            Text(
+              controller.errorMessage.value,
+              style: AppText.bodyMedium(color: AppColors.grey),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: AppResponsive.h(3)),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => controller.getAllDataFavorite(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: AppResponsive.padding(vertical: 3),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(
+                        AppResponsive.getResponsiveSize(12)),
+                  ),
+                ),
+                icon: Icon(Remix.refresh_line),
+                label: Text('Coba Lagi',
+                    style: AppText.button(color: Colors.white)),
+              ),
+            ),
+          ],
+        ),
       ),
-      bottomNavigationBar: CustomBottomNavigationBar(),
     );
   }
 
   Widget _buildEmptyState() {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Remix.heart_3_line,
-            size: AppResponsive.getResponsiveSize(80),
-            color: AppColors.muted,
-          ),
-          SizedBox(height: AppResponsive.h(2)),
-          Text(
-            'Belum ada mobil favorit',
-            style: AppText.h5(color: AppColors.dark),
-          ),
-          SizedBox(height: AppResponsive.h(1)),
-          Text(
-            'Tambahkan mobil ke favorit untuk melihatnya di sini',
-            style: AppText.p(color: AppColors.grey),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: AppResponsive.h(3)),
-          ElevatedButton(
-            onPressed: () => Get.toNamed('/list-mobil'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-              padding: AppResponsive.padding(horizontal: 5, vertical: 1.5),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(
-                  AppResponsive.getResponsiveSize(10),
+      child: Container(
+        margin: AppResponsive.margin(horizontal: 6),
+        padding: AppResponsive.padding(all: 8),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: EdgeInsets.all(AppResponsive.w(8)),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.primary.withOpacity(0.1),
+                    AppColors.secondary,
+                  ],
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Remix.heart_3_line,
+                size: AppResponsive.getResponsiveSize(80),
+                color: AppColors.primary,
+              ),
+            ),
+            SizedBox(height: AppResponsive.h(4)),
+            Text(
+              'Belum Ada Favorit',
+              style: AppText.h4(color: AppColors.dark),
+            ),
+            SizedBox(height: AppResponsive.h(1.5)),
+            Text(
+              'Jelajahi koleksi mobil kami dan tambahkan\nyang paling Anda sukai ke favorit',
+              style: AppText.bodyMedium(color: AppColors.grey),
+              textAlign: TextAlign.center,
+            ),
+            SizedBox(height: AppResponsive.h(5)),
+            Container(
+              height: AppResponsive.h(8),
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () => Get.toNamed('/list-mobil'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  padding: AppResponsive.padding(vertical: 2),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(
+                        AppResponsive.getResponsiveSize(15)),
+                  ),
+                  elevation: 3,
+                ),
+                icon: Icon(
+                  Remix.car_line,
+                  size: AppResponsive.getResponsiveSize(20),
+                  color: Colors.white,
+                ),
+                label: Text(
+                  'Jelajahi Mobil',
+                  style: AppText.bodyMediumBold(color: Colors.white),
                 ),
               ),
             ),
-            child: Text(
-              'Lihat Daftar Mobil',
-              style: AppText.button(color: Colors.white),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -134,6 +248,7 @@ class FavoritView extends GetView<FavoritController> {
   Widget _buildFavoritList() {
     return ListView.builder(
       padding: AppResponsive.padding(all: 4),
+      physics: AlwaysScrollableScrollPhysics(),
       itemCount: controller.favoriteCars.length,
       itemBuilder: (context, index) {
         final car = controller.favoriteCars[index];
@@ -144,172 +259,229 @@ class FavoritView extends GetView<FavoritController> {
 
   Widget _buildFavoritItem(Map<String, dynamic> car, int index) {
     return Container(
-      margin: AppResponsive.margin(bottom: 3),
+      margin: AppResponsive.margin(bottom: 4),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(AppResponsive.getResponsiveSize(15)),
+        borderRadius:
+            BorderRadius.circular(AppResponsive.getResponsiveSize(20)),
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadow.withOpacity(0.1),
-            blurRadius: 10,
+            color: AppColors.shadow.withOpacity(0.08),
+            blurRadius: 20,
             offset: const Offset(0, 4),
+            spreadRadius: 0,
           ),
         ],
       ),
-      child: InkWell(
-        onTap: () => Get.toNamed('/detail-mobil', arguments: car),
-        borderRadius: BorderRadius.circular(AppResponsive.getResponsiveSize(15)),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Gambar Mobil
-            Stack(
-              children: [
-                ClipRRect(
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(AppResponsive.getResponsiveSize(15)),
-                    topRight: Radius.circular(AppResponsive.getResponsiveSize(15)),
-                  ),
-                  child: Image.asset(
-                    car['image'] as String,
-                    height: AppResponsive.h(20),
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        height: AppResponsive.h(20),
-                        color: AppColors.muted,
-                        child: Center(
-                          child: Icon(
-                            Remix.image_line,
-                            size: AppResponsive.getResponsiveSize(40),
-                            color: AppColors.grey,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-                // Tombol Hapus Favorit
-                Positioned(
-                  top: AppResponsive.h(1),
-                  right: AppResponsive.w(2),
-                  child: GestureDetector(
-                    onTap: () {
-                      // Konfirmasi hapus
-                      Get.dialog(
-                        AlertDialog(
-                          title: Text(
-                            'Hapus dari Favorit',
-                            style: AppText.h5(color: AppColors.dark),
-                          ),
-                          content: Text(
-                            'Apakah Anda yakin ingin menghapus ${car['carName']} dari favorit?',
-                            style: AppText.p(color: AppColors.dark),
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Get.back(),
-                              child: Text(
-                                'Batal',
-                                style: AppText.button(color: AppColors.grey),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () =>
+              Get.toNamed('/detail-mobil', arguments: {'id': car['mobil_id']}),
+          borderRadius:
+              BorderRadius.circular(AppResponsive.getResponsiveSize(20)),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Stack(
+                children: [
+                  ClipRRect(
+                    borderRadius: BorderRadius.only(
+                      topLeft:
+                          Radius.circular(AppResponsive.getResponsiveSize(20)),
+                      topRight:
+                          Radius.circular(AppResponsive.getResponsiveSize(20)),
+                    ),
+                    child: Stack(
+                      children: [
+                        car['thumbnail_foto'] != null
+                            ? Image.network(
+                                car['thumbnail_foto'],
+                                height: AppResponsive.h(22),
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    _buildImagePlaceholder(),
+                              )
+                            : _buildImagePlaceholder(),
+                        Positioned.fill(
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [
+                                  Colors.transparent,
+                                  Colors.black.withOpacity(0.1),
+                                ],
                               ),
                             ),
-                            TextButton(
-                              onPressed: () {
-                                controller.removeFavorite(car);
-                                Get.back();
-                                Get.snackbar(
-                                  'Favorit',
-                                  '${car['carName']} dihapus dari favorit',
-                                  backgroundColor: Colors.red,
-                                  colorText: Colors.white,
-                                  snackPosition: SnackPosition.BOTTOM,
-                                  margin: EdgeInsets.all(20),
-                                  duration: Duration(seconds: 2),
-                                );
-                              },
-                              child: Text(
-                                'Hapus',
-                                style: AppText.button(color: AppColors.danger),
-                              ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Positioned(
+                    top: AppResponsive.h(1.5),
+                    right: AppResponsive.w(3),
+                    child: GestureDetector(
+                      onTap: () => _showRemoveDialog(car),
+                      child: Container(
+                        padding: AppResponsive.padding(all: 1.5),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.15),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
                             ),
                           ],
                         ),
-                      );
-                    },
-                    child: Container(
-                      padding: AppResponsive.padding(all: 1),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.shadow,
-                            blurRadius: 5,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                      child: Icon(
-                        Remix.heart_3_fill,
-                        color: AppColors.danger,
-                        size: AppResponsive.getResponsiveSize(24),
+                        child: Icon(
+                          Remix.heart_3_fill,
+                          color: AppColors.danger,
+                          size: AppResponsive.getResponsiveSize(22),
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
-            ),
-            // Informasi Mobil
-            Padding(
-              padding: AppResponsive.padding(all: 3),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Expanded(
+                  if (car['tahun_keluaran'] != null)
+                    Positioned(
+                      top: AppResponsive.h(1.5),
+                      left: AppResponsive.w(3),
+                      child: Container(
+                        padding:
+                            AppResponsive.padding(horizontal: 2, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withOpacity(0.9),
+                          borderRadius: BorderRadius.circular(
+                              AppResponsive.getResponsiveSize(8)),
+                        ),
                         child: Text(
-                          car['carName'] as String,
-                          style: AppText.h5(color: AppColors.dark),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
+                          car['tahun_keluaran'].toString(),
+                          style: AppText.caption(color: Colors.white),
                         ),
                       ),
-                      Text(
-                        car['year'] as String,
-                        style: AppText.bodyMedium(color: AppColors.grey),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: AppResponsive.h(0.5)),
-                  Text(
-                    'Rp${car['price']}',
-                    style: AppText.h5thin(color: AppColors.primary),
-                  ),
-                  SizedBox(height: AppResponsive.h(1)),
-                  Row(
-                    children: [
-                      _buildInfoChip(
-                        icon: Remix.dashboard_3_line,
-                        label: car['transmission'] as String,
-                      ),
-                      SizedBox(width: AppResponsive.w(2)),
-                      _buildInfoChip(
-                        icon: Remix.gas_station_line,
-                        label: car['fuelType'] as String,
-                      ),
-                      SizedBox(width: AppResponsive.w(2)),
-                      _buildInfoChip(
-                        icon: Remix.user_3_line,
-                        label: car['seats'] as String,
-                      ),
-                    ],
-                  ),
+                    ),
                 ],
               ),
+              Padding(
+                padding: AppResponsive.padding(all: 4),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                car['nama_mobil'] ?? 'Nama Mobil',
+                                style: AppText.h5(color: AppColors.dark),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              SizedBox(height: AppResponsive.h(0.5)),
+                              Text(
+                                'by ${car['merk'] ?? 'Unknown'}',
+                                style: AppText.bodySmall(color: AppColors.grey),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: AppResponsive.h(2)),
+                    Container(
+                      padding:
+                          AppResponsive.padding(horizontal: 3, vertical: 1.5),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(
+                            AppResponsive.getResponsiveSize(12)),
+                        border: Border.all(
+                          color: AppColors.primary.withOpacity(0.2),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Remix.money_dollar_circle_line,
+                            size: AppResponsive.getResponsiveSize(16),
+                            color: AppColors.primary,
+                          ),
+                          SizedBox(width: AppResponsive.w(1)),
+                          Text(
+                            CurrencyFormatter.formatRupiah(car['harga_cash']),
+                            style: AppText.bodyMediumBold(
+                                color: AppColors.primary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: AppResponsive.h(2.5)),
+                    Wrap(
+                      spacing: AppResponsive.w(2),
+                      runSpacing: AppResponsive.h(1),
+                      children: [
+                        _buildModernInfoChip(
+                          icon: Remix.settings_3_line,
+                          label: car['transmisi'] ?? '',
+                          color: AppColors.info,
+                        ),
+                        _buildModernInfoChip(
+                          icon: Remix.gas_station_line,
+                          label: car['bahan_bakar'] ?? '',
+                          color: AppColors.success,
+                        ),
+                        _buildModernInfoChip(
+                          icon: Remix.car_line,
+                          label: car['merk'] ?? '',
+                          color: AppColors.warning,
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildImagePlaceholder() {
+    return Container(
+      height: AppResponsive.h(22),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.muted,
+            AppColors.muted.withOpacity(0.7),
+          ],
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Remix.image_line,
+              size: AppResponsive.getResponsiveSize(32),
+              color: AppColors.grey,
+            ),
+            SizedBox(height: AppResponsive.h(1)),
+            Text(
+              'Foto tidak tersedia',
+              style: AppText.caption(color: AppColors.grey),
             ),
           ],
         ),
@@ -317,27 +489,231 @@ class FavoritView extends GetView<FavoritController> {
     );
   }
 
-  Widget _buildInfoChip({required IconData icon, required String label}) {
+  Widget _buildModernInfoChip({
+    required IconData icon,
+    required String label,
+    required Color color,
+  }) {
     return Container(
-      padding: AppResponsive.padding(horizontal: 2, vertical: 0.5),
+      padding: AppResponsive.padding(horizontal: 2.5, vertical: 1),
       decoration: BoxDecoration(
-        color: AppColors.muted,
-        borderRadius: BorderRadius.circular(AppResponsive.getResponsiveSize(8)),
+        color: color.withOpacity(0.1),
+        borderRadius:
+            BorderRadius.circular(AppResponsive.getResponsiveSize(10)),
+        border: Border.all(
+          color: color.withOpacity(0.3),
+          width: 1,
+        ),
       ),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Icon(
             icon,
-            size: AppResponsive.getResponsiveSize(16),
-            color: AppColors.primary,
+            size: AppResponsive.getResponsiveSize(14),
+            color: color,
           ),
           SizedBox(width: AppResponsive.w(1)),
           Text(
             label,
-            style: AppText.caption(color: AppColors.dark),
+            style: AppText.bodySmall(color: color),
           ),
         ],
       ),
+    );
+  }
+
+  void _showClearAllDialog() {
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius:
+              BorderRadius.circular(AppResponsive.getResponsiveSize(20)),
+        ),
+        child: Container(
+          padding: AppResponsive.padding(all: 5),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: EdgeInsets.all(AppResponsive.w(2)),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      AppColors.danger.withOpacity(0.1),
+                      AppColors.danger.withOpacity(0.05),
+                    ],
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Remix.delete_bin_line,
+                  size: AppResponsive.getResponsiveSize(32),
+                  color: AppColors.danger,
+                ),
+              ),
+              SizedBox(height: AppResponsive.h(3)),
+              Text(
+                'Hapus Semua Favorit?',
+                style: AppText.h5(color: AppColors.dark),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: AppResponsive.h(1.5)),
+              Text(
+                'Tindakan ini akan menghapus semua mobil favorit Anda. Apakah Anda yakin ingin melanjutkan?',
+                style: AppText.bodyMedium(color: AppColors.grey),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: AppResponsive.h(4)),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: AppColors.muted),
+                        padding: AppResponsive.padding(vertical: 2),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                              AppResponsive.getResponsiveSize(12)),
+                        ),
+                      ),
+                      child: Text(
+                        'Batal',
+                        style: AppText.button(color: AppColors.dark),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: AppResponsive.w(3)),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        controller.clearAllFavorites();
+                        Get.back();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.danger,
+                        foregroundColor: Colors.white,
+                        padding: AppResponsive.padding(vertical: 2),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                              AppResponsive.getResponsiveSize(12)),
+                        ),
+                        elevation: 2,
+                      ),
+                      child: Text(
+                        'Ya, Hapus',
+                        style: AppText.button(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: false,
+    );
+  }
+
+  void _showRemoveDialog(Map<String, dynamic> car) {
+    Get.dialog(
+      Dialog(
+        shape: RoundedRectangleBorder(
+          borderRadius:
+              BorderRadius.circular(AppResponsive.getResponsiveSize(20)),
+        ),
+        child: Container(
+          padding: AppResponsive.padding(all: 5),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: EdgeInsets.all(AppResponsive.w(3)),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Remix.heart_3_fill,
+                  size: AppResponsive.getResponsiveSize(28),
+                  color: AppColors.primary,
+                ),
+              ),
+              SizedBox(height: AppResponsive.h(2.5)),
+              Text(
+                'Hapus dari Favorit?',
+                style: AppText.h5(color: AppColors.dark),
+                textAlign: TextAlign.center,
+              ),
+              SizedBox(height: AppResponsive.h(1)),
+              RichText(
+                textAlign: TextAlign.center,
+                text: TextSpan(
+                  style: AppText.bodyMedium(color: AppColors.grey),
+                  children: [
+                    TextSpan(text: 'Apakah Anda yakin ingin menghapus '),
+                    TextSpan(
+                      text: car['nama_mobil'] ?? 'mobil ini',
+                      style: AppText.bodyMediumBold(color: AppColors.dark),
+                    ),
+                    TextSpan(text: ' dari daftar favorit?'),
+                  ],
+                ),
+              ),
+              SizedBox(height: AppResponsive.h(4)),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Get.back(),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: AppColors.muted),
+                        padding: AppResponsive.padding(vertical: 2),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                              AppResponsive.getResponsiveSize(12)),
+                        ),
+                      ),
+                      child: Text(
+                        'Batal',
+                        style: AppText.button(color: AppColors.dark),
+                      ),
+                    ),
+                  ),
+                  SizedBox(width: AppResponsive.w(3)),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () {
+                        controller.removeFavorite(car);
+                        Get.back();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.danger,
+                        foregroundColor: Colors.white,
+                        padding: AppResponsive.padding(vertical: 2),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(
+                              AppResponsive.getResponsiveSize(12)),
+                        ),
+                        elevation: 2,
+                      ),
+                      child: Text(
+                        'Ya, Hapus',
+                        style: AppText.button(color: Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+      barrierDismissible: false,
     );
   }
 }

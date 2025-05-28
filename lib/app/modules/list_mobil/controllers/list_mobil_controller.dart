@@ -1,156 +1,239 @@
-
+import 'dart:convert';
+import 'package:dealer_mobil/app/base_url/base_url.dart';
+import 'package:dealer_mobil/app/service/storage_service.dart';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:http/http.dart' as http;
 
 class ListMobilController extends GetxController {
-  // Observable list untuk daftar mobil original (tidak berubah)
-  final brands = [
-    {'name': 'Toyota', 'image': 'assets/images/toyota.png'},
-    {'name': 'Honda', 'image': 'assets/images/honda.png'},
-    {'name': 'Nissan', 'image': 'assets/images/nissan.png'},
-    {'name': 'Mazda', 'image': 'assets/images/mazda.png'},
-  ].obs;
+  final storageService = Get.find<StorageService>();
 
-  // Daftar mobil original
-  final List<Map<String, dynamic>> _originalCarList = [
-    {
-      'id': '1',
-      'image': 'assets/images/ryzen.jpg',
-      'logoName': 'Toyota',
-      'carName': 'Toyota Ryzen',
-      'price': '210000000',
-      'horsePower': '586 hp',
-      'transmission': 'Automatic',
-      'seats': '4 Seats',
-      'bodyType': 'Sedan',
-      'engineCapacity': '2.0L',
-      'color': 'Merah',
-      'fuelType': 'Bensin',
-      'year': '2022',
-      'description':
-          'Mobil sporty dengan performa tinggi dari Toyota, dirancang untuk pengalaman berkendara yang luar biasa.',
-    },
-    {
-      'id': '2',
-      'image': 'assets/images/veloz.png',
-      'logoName': 'Toyota',
-      'carName': 'Avanza Veloz',
-      'price': '376000000',
-      'horsePower': '450 hp',
-      'transmission': 'Automatic',
-      'seats': '7 Seats',
-      'bodyType': 'MPV',
-      'engineCapacity': '1.5L',
-      'color': 'Putih',
-      'fuelType': 'Bensin',
-      'year': '2023',
-      'description':
-          'MPV keluarga yang nyaman dengan kapasitas penumpang lebih banyak dan fitur modern.',
-    },
-    {
-      'id': '3',
-      'image': 'assets/images/mazda_m2.png',
-      'logoName': 'Mazda',
-      'carName': 'Mazda M2',
-      'price': '198900000',
-      'horsePower': '520 hp',
-      'transmission': 'Automatic',
-      'seats': '5 Seats',
-      'bodyType': 'Sedan',
-      'engineCapacity': '2.0L',
-      'color': 'Hitam',
-      'fuelType': 'Bensin',
-      'year': '2022',
-      'description':
-          'Sedan sporty dengan desain elegan dan teknologi canggih dari Mazda.',
-    },
-  ];
+  final RxBool isSearchFocused = false.obs;
+  final TextEditingController searchController = TextEditingController();
+  final FocusNode searchFocusNode = FocusNode();
 
-  // Observable list untuk daftar mobil yang dapat berubah sesuai filter
-  final RxList<Map<String, dynamic>> carListings =
-      RxList<Map<String, dynamic>>();
+  final RxBool isLoading = true.obs;
+  final RxBool isError = false.obs;
+  final RxString errorMessage = ''.obs;
+  final RxList carListings = [].obs;
+  final RxList filteredCarListings = [].obs;
 
-  // Filter mobil berdasarkan nama atau merek
-  final RxString searchQuery = ''.obs;
+  final RxList brands = [].obs;
+  final RxList transmisions = [].obs;
+  final RxList tipeBodis = [].obs;
+  final RxList warnas = [].obs;
+  final RxList bahanBakars = [].obs;
+  final RxList years = [].obs;
+  final RxList kapasitasMesins = [].obs;
+  final RxList metodePembayarans = [].obs;
 
-  // Filter parameter
   final Rx<Map<String, dynamic>> activeFilters = Rx<Map<String, dynamic>>({});
+  final RxString searchQuery = ''.obs;
 
   @override
   void onInit() {
     super.onInit();
-    // Inisialisasi carListings dengan data original
-    carListings.assignAll(_originalCarList);
+    if (Get.arguments != null && Get.arguments['filter'] != null) {
+      activeFilters.value = Map<String, dynamic>.from(Get.arguments['filter']);
+    }
+    fetchMobil();
+    checkAndOpenSearch();
+
+    ever(searchQuery, (_) {
+      applyAllFilters();
+    });
   }
 
-  // Metode untuk melakukan pencarian
-  void searchCars(String query) {
-    searchQuery.value = query.toLowerCase();
-    applyAllFilters();
+  void checkAndOpenSearch() {
+    if (Get.arguments != null && Get.arguments['openSearch'] == true) {
+      Future.delayed(Duration(milliseconds: 300), () {
+        isSearchFocused.value = true;
+        searchFocusNode.requestFocus();
+      });
+    }
   }
 
-  // Getter untuk list mobil yang difilter berdasarkan pencarian
-  List<Map<String, dynamic>> get filteredCarListings {
-    return carListings;
+  Future<void> fetchMobil() async {
+    try {
+      isLoading.value = true;
+      isError.value = false;
+
+      final token = storageService.getToken();
+
+      final String endpoint = '${BaseUrl.baseUrl}/mobil-all';
+
+      Map<String, String> headers = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+      };
+
+      if (token != null) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+
+      final response = await http.get(
+        Uri.parse(endpoint),
+        headers: headers,
+      );
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> responseData = jsonDecode(response.body);
+
+        if (responseData['status'] == true) {
+          carListings.value = responseData['data'];
+
+          applyAllFilters();
+
+          if (responseData.containsKey('filter_options')) {
+            brands.value = responseData['filter_options']['brands'] ?? [];
+            transmisions.value =
+                responseData['filter_options']['transmisi'] ?? [];
+            tipeBodis.value = responseData['filter_options']['tipe_bodi'] ?? [];
+            warnas.value = responseData['filter_options']['warna'] ?? [];
+            bahanBakars.value =
+                responseData['filter_options']['bahan_bakar'] ?? [];
+            years.value =
+                responseData['filter_options']['tahun_keluaran'] ?? [];
+            kapasitasMesins.value =
+                responseData['filter_options']['kapasitas_mesin'] ?? [];
+            metodePembayarans.value =
+                responseData['filter_options']['metode_pembayaran'] ?? [];
+          }
+        } else {
+          isError.value = true;
+          errorMessage.value =
+              responseData['message'] ?? 'Gagal memuat data mobil';
+        }
+      } else if (response.statusCode == 401) {
+        isError.value = true;
+        errorMessage.value = 'Anda perlu login untuk mengakses data ini';
+      } else {
+        isError.value = true;
+        errorMessage.value = 'Terjadi kesalahan: ${response.statusCode}';
+      }
+    } catch (e) {
+      isError.value = true;
+      errorMessage.value = 'Terjadi kesalahan: $e';
+    } finally {
+      isLoading.value = false;
+    }
   }
 
-  // Reset semua filter
   void resetFilters() {
     activeFilters.value = {};
     searchQuery.value = '';
-    carListings.clear();
-    carListings.addAll(_originalCarList);
+    applyAllFilters();
+  }
+
+  void searchCars(String query) {
+    searchQuery.value = query.toLowerCase();
   }
 
   void applyAllFilters() {
-    // Mulai dengan list original
-    List<Map<String, dynamic>> filteredList = [..._originalCarList];
+    if (carListings.isEmpty) {
+      filteredCarListings.clear();
+      return;
+    }
 
-    // Terapkan filter pencarian
+    List filteredList = List.from(carListings);
+
     if (searchQuery.value.isNotEmpty) {
       filteredList = filteredList.where((car) {
-        final carName = (car['carName'] as String).toLowerCase();
-        final logoName = (car['logoName'] as String).toLowerCase();
-        return carName.contains(searchQuery.value) ||
-            logoName.contains(searchQuery.value);
+        final String namaMobil =
+            (car['nama_mobil'] ?? '').toString().toLowerCase();
+        final String merk = (car['merk'] ?? '').toString().toLowerCase();
+        return namaMobil.contains(searchQuery.value) ||
+            merk.contains(searchQuery.value);
       }).toList();
     }
 
-    // Jika ada filter aktif, terapkan
     if (activeFilters.value.isNotEmpty) {
       filteredList = _applyFilters(filteredList, activeFilters.value);
     }
 
-    // Update observable list dengan cara yang benar
-    carListings.clear();
-    carListings.addAll(filteredList);
+    filteredCarListings.value = filteredList;
   }
 
-  // Method untuk menerapkan filter (bersih dari pencarian)
   void applyCarFilter(Map<String, dynamic> filterParams) {
-    // Simpan filter yang aktif
     activeFilters.value = Map<String, dynamic>.from(filterParams);
-
-    // Terapkan semua filter
     applyAllFilters();
   }
 
-  List<Map<String, dynamic>> _applyFilters(
-      List<Map<String, dynamic>> list, Map<String, dynamic> filters) {
+  List _applyFilters(List list, Map<String, dynamic> filters) {
     return list.where((car) {
-      // Filter berdasarkan brand/merk
-      if (filters['brand'] != null && car['logoName'] != filters['brand']) {
+      if (filters['brand'] != null && car['merk'] != filters['brand']) {
         return false;
       }
 
-      // Filter berdasarkan transmisi
+      if (filters['merk_id'] != null &&
+          car['merk_id'].toString() != filters['merk_id'].toString()) {
+        return false;
+      }
+
       if (filters['transmission'] != null &&
-          car['transmission'] != filters['transmission']) {
+          car['transmisi'] != filters['transmission']) {
         return false;
       }
 
-      // Filter berdasarkan rentang harga - dengan pemeriksaan lebih baik
+      if (filters['transmisi_id'] != null &&
+          car['transmisi_id'].toString() !=
+              filters['transmisi_id'].toString()) {
+        return false;
+      }
+
+      if (filters['bodyType'] != null &&
+          car['tipe_bodi'] != filters['bodyType']) {
+        return false;
+      }
+
+      if (filters['tipe_bodi_id'] != null &&
+          car['tipe_bodi_id'].toString() !=
+              filters['tipe_bodi_id'].toString()) {
+        return false;
+      }
+
+      if (filters['fuelType'] != null &&
+          car['bahan_bakar'] != filters['fuelType']) {
+        return false;
+      }
+
+      if (filters['bahan_bakar_id'] != null &&
+          car['bahan_bakar_id'].toString() !=
+              filters['bahan_bakar_id'].toString()) {
+        return false;
+      }
+
+      if (filters['engineCapacity'] != null) {
+        final String filterCapacity =
+            filters['engineCapacity'].toString().replaceAll(' cc', '');
+        final String carCapacity =
+            car['kapasitas_mesin'].toString().replaceAll(' cc', '');
+
+        if (filterCapacity != carCapacity) {
+          return false;
+        }
+      }
+
+      if (filters['kapasitas_mesin_id'] != null &&
+          car['kapasitas_mesin_id'].toString() !=
+              filters['kapasitas_mesin_id'].toString()) {
+        return false;
+      }
+
+      if (filters['year'] != null &&
+          car['tahun_keluaran'].toString() != filters['year']) {
+        return false;
+      }
+
+      if (filters['color'] != null) {
+        final List carColors = car['warna'] ?? [];
+        if (!carColors.contains(filters['color'])) {
+          return false;
+        }
+      }
+
       if (filters['priceRange'] != null) {
-        final double carPrice = double.tryParse(car['price']) ?? 0.0;
+        final double carPrice = double.tryParse(car['harga'].toString()) ?? 0.0;
         final String priceRange = filters['priceRange'];
 
         try {
@@ -164,40 +247,28 @@ class ListMobilController extends GetxController {
             if (carPrice <= 500000000) return false;
           }
         } catch (e) {
-          print('Error memproses filter harga: $e');
+          print('Error processing price filter: $e');
         }
       }
 
-      // Filter lainnya (tidak berubah)
-      if (filters['bodyType'] != null && car['bodyType'] != filters['bodyType'])
-        return false;
-      if (filters['engineCapacity'] != null &&
-          car['engineCapacity'] != filters['engineCapacity']) return false;
-      if (filters['color'] != null && car['color'] != filters['color'])
-        return false;
-      if (filters['fuelType'] != null && car['fuelType'] != filters['fuelType'])
-        return false;
-      if (filters['year'] != null && car['year'] != filters['year'])
-        return false;
-
       return true;
     }).toList();
-      }
+  }
 
-  // Metode untuk mengurutkan mobil
   void sortCarsByPrice({bool ascending = true}) {
-    List<Map<String, dynamic>> sortedList = [...carListings];
+    List sortedList = List.from(filteredCarListings);
     sortedList.sort((a, b) {
-      final priceA = double.tryParse(a['price']) ?? 0.0;
-      final priceB = double.tryParse(b['price']) ?? 0.0;
+      final priceA = double.tryParse(a['harga'].toString()) ?? 0.0;
+      final priceB = double.tryParse(b['harga'].toString()) ?? 0.0;
       return ascending ? priceA.compareTo(priceB) : priceB.compareTo(priceA);
     });
-    carListings.assignAll(sortedList);
+    filteredCarListings.value = sortedList;
   }
 
   @override
   void onClose() {
-    // Pembersihan sumber daya jika diperlukan
+    searchController.dispose();
+    searchFocusNode.dispose();
     super.onClose();
   }
 }

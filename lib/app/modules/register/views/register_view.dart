@@ -40,7 +40,7 @@ class RegisterView extends GetView<RegisterController> {
                 ),
                 SizedBox(height: AppResponsive.h(5)),
                 
-                
+                // Nama
                 Padding(
                   padding: AppResponsive.padding(left: 2, bottom: 0.5),
                   child: Text(
@@ -89,7 +89,7 @@ class RegisterView extends GetView<RegisterController> {
                 
                 SizedBox(height: AppResponsive.h(3)),
                 
-                
+                // Email
                 Padding(
                   padding: AppResponsive.padding(left: 2, bottom: 0.5),
                   child: Text(
@@ -138,7 +138,58 @@ class RegisterView extends GetView<RegisterController> {
                 
                 SizedBox(height: AppResponsive.h(3)),
                 
+                // Nomor WhatsApp (tambahkan field baru)
+                Padding(
+                  padding: AppResponsive.padding(left: 2, bottom: 0.5),
+                  child: Text(
+                    'Nomor WhatsApp',
+                    style: AppText.small(color: Colors.white),
+                  ),
+                ),
+                Obx(() => Container(
+                  height: AppResponsive.h(7),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: controller.noWaError.value 
+                        ? Colors.red 
+                        : Colors.white.withOpacity(0.3),
+                      width: 1,
+                    ),
+                  ),
+                  child: TextField(
+                    controller: controller.noWaController,
+                    cursorColor: AppColors.secondary,
+                    style: AppText.p(color: Colors.white),
+                    keyboardType: TextInputType.phone,
+                    decoration: InputDecoration(
+                      border: InputBorder.none,
+                      contentPadding: AppResponsive.padding(horizontal: 3, vertical: 1.5),
+                      hintText: '628xxxxxxxxxx',
+                      hintStyle: AppText.p(color: Colors.white.withOpacity(0.5)),
+                    ),
+                    onChanged: (_) {
+                      if (controller.noWaError.value) {
+                        controller.noWaError.value = false;
+                      }
+                    },
+                  ),
+                )),
+                Obx(() => controller.noWaError.value
+                  ? Padding(
+                      padding: AppResponsive.padding(left: 2, top: 1),
+                      child: Text(
+                        controller.noWaErrorText.value,
+                        style: AppText.small(color: Colors.red),
+                      ),
+                    )
+                  : const SizedBox.shrink()
+                ),
                 
+                SizedBox(height: AppResponsive.h(3)),
+                
+                // Kata Sandi
                 Padding(
                   padding: AppResponsive.padding(left: 2, bottom: 0.5),
                   child: Text(
@@ -188,7 +239,7 @@ class RegisterView extends GetView<RegisterController> {
                 
                 SizedBox(height: AppResponsive.h(3)),
                 
-                
+                // Konfirmasi Kata Sandi
                 Padding(
                   padding: AppResponsive.padding(left: 2, bottom: 0.5),
                   child: Text(
@@ -238,7 +289,7 @@ class RegisterView extends GetView<RegisterController> {
                 
                 SizedBox(height: AppResponsive.h(4)),
                 
-                
+                // Tombol Daftar
                 Obx(() => SizedBox(
                   width: double.infinity,
                   height: AppResponsive.h(6),
@@ -267,7 +318,7 @@ class RegisterView extends GetView<RegisterController> {
                 
                 SizedBox(height: AppResponsive.h(2)),
                 
-                
+                // Link ke halaman Login
                 Center(
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,

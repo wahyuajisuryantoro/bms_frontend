@@ -13,12 +13,12 @@ class CustomBottomNavigationBar extends StatelessWidget {
   final BottomNavigationBarController navigationController =
       Get.put(BottomNavigationBarController());
       
-  // Menghindari error "FavoritController not found" dengan pendekatan yang lebih aman
+  // Mendapatkan FavoritController dengan safe approach
   FavoritController? get _favoritController {
     try {
       return Get.find<FavoritController>();
     } catch (e) {
-      // Jika controller belum diinisialisasi, buat instance baru
+      // Jika controller belum diinisialisasi, buat instance baru dengan permanent: true
       return Get.put(FavoritController(), permanent: true);
     }
   }
@@ -31,10 +31,8 @@ class CustomBottomNavigationBar extends StatelessWidget {
     });
 
     return Container(
-      height: AppResponsive.h(8),
-      width: double.infinity,
       decoration: const BoxDecoration(
-        color: AppColors.whiteOld,
+        color: AppColors.primary,
       ),
       child: Obx(
         () => BottomNavigationBar(
@@ -64,7 +62,7 @@ class CustomBottomNavigationBar extends StatelessWidget {
               label: "",
               index: 1,
             ),
-            // Untuk icon favorit, gunakan Obx agar bisa menampilkan badge
+            // Item favorit dengan badge yang reactive
             _buildFavNavItem(
               context,
               icon: Remix.heart_3_line,
@@ -94,14 +92,14 @@ class CustomBottomNavigationBar extends StatelessWidget {
     return BottomNavigationBarItem(
       icon: isSelected
           ? Container(
-              padding: EdgeInsets.all(AppResponsive.w(2.5)),
+              padding: EdgeInsets.all(AppResponsive.w(2.0)),
               decoration: const BoxDecoration(
                 color: AppColors.secondary,
                 shape: BoxShape.circle,
               ),
               child: Icon(
                 icon,
-                color: AppColors.warning,
+                color: AppColors.primary,
                 size: AppResponsive.w(5.5),
               ),
             )
@@ -114,7 +112,7 @@ class CustomBottomNavigationBar extends StatelessWidget {
     );
   }
   
-  // Khusus untuk nav item favorit dengan badge
+  // Khusus untuk nav item favorit dengan badge yang reactive
   BottomNavigationBarItem _buildFavNavItem(
     BuildContext context, {
     required IconData icon,
@@ -129,14 +127,14 @@ class CustomBottomNavigationBar extends StatelessWidget {
         children: [
           isSelected
               ? Container(
-                  padding: EdgeInsets.all(AppResponsive.w(2.5)),
+                  padding: EdgeInsets.all(AppResponsive.w(2.0)),
                   decoration: const BoxDecoration(
                     color: AppColors.secondary,
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
                     icon,
-                    color: AppColors.warning,
+                    color: AppColors.primary,
                     size: AppResponsive.w(5.5),
                   ),
                 )
@@ -146,9 +144,14 @@ class CustomBottomNavigationBar extends StatelessWidget {
                   color: Colors.grey,
                 ),
                 
-          // Badge count - dengan pengecekan null-safety
-          if (_favoritController != null && _favoritController!.favoriteCount > 0)
-            Positioned(
+          // Badge count yang reactive - menggunakan Obx untuk auto-update
+          Obx(() {
+            final controller = _favoritController;
+            if (controller == null || controller.favoriteCount == 0) {
+              return SizedBox.shrink();
+            }
+            
+            return Positioned(
               top: -8,
               right: -8,
               child: Container(
@@ -163,9 +166,9 @@ class CustomBottomNavigationBar extends StatelessWidget {
                 ),
                 child: Center(
                   child: Text(
-                    _favoritController!.favoriteCount > 9 
+                    controller.favoriteCount > 9 
                         ? '9+' 
-                        : _favoritController!.favoriteCount.toString(),
+                        : controller.favoriteCount.toString(),
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: AppResponsive.getResponsiveSize(10),
@@ -174,7 +177,8 @@ class CustomBottomNavigationBar extends StatelessWidget {
                   ),
                 ),
               ),
-            ),
+            );
+          }),
         ],
       ),
       label: label,

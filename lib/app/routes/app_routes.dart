@@ -16,6 +16,7 @@ abstract class Routes {
   static const INFORMASI = _Paths.INFORMASI;
   static const TENTANG = _Paths.TENTANG;
   static const KEBIJAKAN_DAN_PRIVASI = _Paths.KEBIJAKAN_DAN_PRIVASI;
+  static const SUKSES_VERIFIKASI_EMAIL = _Paths.SUKSES_VERIFIKASI_EMAIL;
 }
 
 abstract class _Paths {
@@ -33,4 +34,5 @@ abstract class _Paths {
   static const INFORMASI = '/informasi';
   static const TENTANG = '/tentang';
   static const KEBIJAKAN_DAN_PRIVASI = '/kebijakan-dan-privasi';
+  static const SUKSES_VERIFIKASI_EMAIL = '/sukses-verifikasi-email';
 }

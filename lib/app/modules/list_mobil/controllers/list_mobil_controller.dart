@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:dealer_mobil/app/base_url/base_url.dart';
 import 'package:dealer_mobil/app/service/storage_service.dart';
+import 'package:dealer_mobil/app/utils/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
@@ -30,18 +31,97 @@ class ListMobilController extends GetxController {
   final Rx<Map<String, dynamic>> activeFilters = Rx<Map<String, dynamic>>({});
   final RxString searchQuery = ''.obs;
 
+  // Flag untuk track apakah ini adalah fresh load
+  final RxBool isInitialLoad = true.obs;
+  final RxBool isRefreshing = false.obs;
+
   @override
   void onInit() {
     super.onInit();
     if (Get.arguments != null && Get.arguments['filter'] != null) {
       activeFilters.value = Map<String, dynamic>.from(Get.arguments['filter']);
     }
-    fetchMobil();
+    loadData();
     checkAndOpenSearch();
 
     ever(searchQuery, (_) {
       applyAllFilters();
     });
+  }
+
+  @override
+  void onReady() {
+    super.onReady();
+    // Set flag bahwa initial load sudah selesai
+    isInitialLoad.value = false;
+  }
+
+  // Method utama untuk load data dengan smart caching
+  Future<void> loadData({bool forceRefresh = false}) async {
+    if (forceRefresh) {
+      await storageService.forceRefreshListMobil();
+      isRefreshing.value = true;
+    }
+
+    // Coba ambil dari cache dulu jika tidak force refresh
+    if (!forceRefresh) {
+      final cachedData = storageService.getCachedListMobilData();
+      if (cachedData != null) {
+        _loadFromCache(cachedData);
+        isRefreshing.value = false;
+        return; // Gunakan data cache, tidak perlu fetch
+      }
+    }
+
+    // Jika cache tidak ada atau expired, fetch dari API
+    await fetchMobil();
+    isRefreshing.value = false;
+  }
+
+  // Load data dari cache
+  void _loadFromCache(Map<String, dynamic> cachedData) {
+    try {
+      // Load car listings
+      carListings.value = cachedData['carListings'] ?? [];
+      
+      // Load filter options
+      final filterOptions = cachedData['filterOptions'] ?? {};
+      brands.value = filterOptions['brands'] ?? [];
+      transmisions.value = filterOptions['transmisi'] ?? [];
+      tipeBodis.value = filterOptions['tipe_bodi'] ?? [];
+      warnas.value = filterOptions['warna'] ?? [];
+      bahanBakars.value = filterOptions['bahan_bakar'] ?? [];
+      years.value = filterOptions['tahun_keluaran'] ?? [];
+      kapasitasMesins.value = filterOptions['kapasitas_mesin'] ?? [];
+      metodePembayarans.value = filterOptions['metode_pembayaran'] ?? [];
+
+      // Set loading ke false
+      isLoading.value = false;
+      isError.value = false;
+
+      // Apply filters
+      applyAllFilters();
+      
+      print('Data loaded from cache - Cars: ${carListings.length}');
+    } catch (e) {
+      print('Error loading from cache: $e');
+      // Jika error, fetch dari API
+      fetchMobil();
+    }
+  }
+
+  // Method untuk refresh manual
+  Future<void> refreshData() async {
+    await loadData(forceRefresh: true);
+    
+    Get.snackbar(
+      'Berhasil',
+      'Data mobil telah diperbarui',
+      backgroundColor: AppColors.primary,
+      colorText: Colors.white,
+      snackPosition: SnackPosition.TOP,
+      duration: Duration(seconds: 2),
+    );
   }
 
   void checkAndOpenSearch() {
@@ -84,21 +164,25 @@ class ListMobilController extends GetxController {
 
           applyAllFilters();
 
+          // Process filter options
+          Map<String, dynamic> filterOptions = {};
           if (responseData.containsKey('filter_options')) {
-            brands.value = responseData['filter_options']['brands'] ?? [];
-            transmisions.value =
-                responseData['filter_options']['transmisi'] ?? [];
-            tipeBodis.value = responseData['filter_options']['tipe_bodi'] ?? [];
-            warnas.value = responseData['filter_options']['warna'] ?? [];
-            bahanBakars.value =
-                responseData['filter_options']['bahan_bakar'] ?? [];
-            years.value =
-                responseData['filter_options']['tahun_keluaran'] ?? [];
-            kapasitasMesins.value =
-                responseData['filter_options']['kapasitas_mesin'] ?? [];
-            metodePembayarans.value =
-                responseData['filter_options']['metode_pembayaran'] ?? [];
+            filterOptions = responseData['filter_options'];
+            brands.value = filterOptions['brands'] ?? [];
+            transmisions.value = filterOptions['transmisi'] ?? [];
+            tipeBodis.value = filterOptions['tipe_bodi'] ?? [];
+            warnas.value = filterOptions['warna'] ?? [];
+            bahanBakars.value = filterOptions['bahan_bakar'] ?? [];
+            years.value = filterOptions['tahun_keluaran'] ?? [];
+            kapasitasMesins.value = filterOptions['kapasitas_mesin'] ?? [];
+            metodePembayarans.value = filterOptions['metode_pembayaran'] ?? [];
           }
+          await storageService.saveListMobilData(
+            carListings: responseData['data'],
+            filterOptions: filterOptions,
+          );
+
+          print('Data fetched and cached - Cars: ${carListings.length}');
         } else {
           isError.value = true;
           errorMessage.value =
@@ -119,9 +203,21 @@ class ListMobilController extends GetxController {
     }
   }
 
+  bool shouldAutoRefresh() {
+    return !storageService.isListMobilDataCacheValid();
+  }
+
+  void onListMobilPageResumed() {
+    if (shouldAutoRefresh()) {
+      print('List Mobil cache expired, refreshing data...');
+      loadData(forceRefresh: true);
+    }
+  }
+
   void resetFilters() {
     activeFilters.value = {};
     searchQuery.value = '';
+    searchController.clear();
     applyAllFilters();
   }
 

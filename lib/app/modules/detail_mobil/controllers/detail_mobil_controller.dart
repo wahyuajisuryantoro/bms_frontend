@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:dealer_mobil/app/base_url/base_url.dart';
 import 'package:dealer_mobil/app/modules/favorit/controllers/favorit_controller.dart';
@@ -7,6 +8,7 @@ import 'package:dealer_mobil/app/helpers/currency_formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
+import 'package:url_launcher/url_launcher.dart';
 
 class DetailMobilController extends GetxController {
   final StorageService storageService = Get.find<StorageService>();
@@ -28,18 +30,27 @@ class DetailMobilController extends GetxController {
   final RxMap<String, dynamic> hasilSimulasi = <String, dynamic>{}.obs;
 
   final RxInt selectedTenor = 36.obs;
-  final RxDouble selectedDp = 20.0.obs;
+  final RxDouble selectedDpAmount = 0.0.obs;
 
   final RxList<Map<String, dynamic>> tenorOptions =
       <Map<String, dynamic>>[].obs;
-  final RxList<Map<String, dynamic>> dpOptions = <Map<String, dynamic>>[].obs;
+
+  // DP validation info
+  final RxMap<String, dynamic> dpValidationInfo = <String, dynamic>{}.obs;
+  final RxDouble dpMinimal = 0.0.obs;
+  final RxDouble dpMaksimal = 0.0.obs;
 
   final RxBool isLoggedIn = false.obs;
 
   final RxBool isFavorite = false.obs;
   final RxBool isLoadingFavorite = false.obs;
 
+  // Text controller for DP input
+  final TextEditingController dpController = TextEditingController();
+
   Map<String, dynamic> get car => carData;
+
+  Timer? dpTimer;
 
   @override
   void onInit() {
@@ -53,14 +64,20 @@ class DetailMobilController extends GetxController {
       fetchDetailMobil(mobilId);
 
       if (isLoggedIn.value) {
-        fetchTenorOptions();
-        fetchDpOptions();
+        fetchTenorOptions(mobilId);
+        fetchDpValidationInfo(mobilId);
       }
     } else {
       isError.value = true;
       errorMessage.value = 'ID Mobil tidak ditemukan';
       isLoading.value = false;
     }
+  }
+
+  @override
+  void onClose() {
+    dpController.dispose();
+    super.onClose();
   }
 
   Future<void> fetchDetailMobil(dynamic mobilId) async {
@@ -85,7 +102,7 @@ class DetailMobilController extends GetxController {
         Uri.parse(endpoint),
         headers: headers,
       );
-      print(response.body);
+      print('Detail Mobil Response: ${response.body}');
 
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
@@ -237,26 +254,63 @@ class DetailMobilController extends GetxController {
     }
   }
 
+  void triggerSimulasiKredit() {
+    hitungSimulasiKredit();
+  }
+
   String getFormattedPrice() {
     if (carData.containsKey('harga_cash') && carData['harga_cash'] != null) {
-      final dynamic hargaRaw = carData['harga_cash'];
-      final num harga =
-          hargaRaw is String ? num.tryParse(hargaRaw) ?? 0 : (hargaRaw as num);
+      final harga = parseToDouble(carData['harga_cash']);
       return CurrencyFormatter.formatRupiah(harga);
     }
     return 'Hubungi Kami';
   }
 
-  void buyNow() {
-    Get.snackbar(
-      'Hubungi Penjual',
-      'Fitur ini akan terhubung ke WhatsApp penjual',
-      backgroundColor: AppColors.primary,
-      colorText: Colors.white,
-      snackPosition: SnackPosition.BOTTOM,
-      margin: EdgeInsets.all(20),
-      duration: Duration(seconds: 2),
-    );
+  void buyNow() async {
+    try {
+      String adminNumber = '6282325411811';
+
+      String message = '🚗 *Halo Admin*\n';
+      message += 'Saya tertarik dengan mobil:\n\n';
+      message += '📋 *Detail Mobil:*\n';
+
+      if (carData.isNotEmpty) {
+        message += '- Nama: ${carData['nama_mobil'] ?? 'N/A'}\n';
+        message += '- Merk: ${carData['merk'] ?? 'N/A'}\n';
+        message += '- Tahun: ${carData['tahun_keluaran'] ?? 'N/A'}\n';
+        message += '- Transmisi: ${carData['transmisi'] ?? 'N/A'}\n';
+        message += '- Bahan Bakar: ${carData['bahan_bakar'] ?? 'N/A'}\n';
+        message += '- Harga: ${getFormattedPrice()}\n\n';
+      }
+
+      message += '💰 *Saya ingin mengetahui:*\n';
+      message += '- Info lebih detail tentang mobil ini\n';
+      message += '- Opsi pembayaran yang tersedia\n';
+      message += '- Proses pembelian\n';
+      message += 'Mohon informasi lebih lanjut. Terima kasih! 🙏';
+
+      final String whatsappUrl =
+          'https://wa.me/$adminNumber?text=${Uri.encodeComponent(message)}';
+      final Uri uri = Uri.parse(whatsappUrl);
+
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        Get.snackbar(
+          'Error',
+          'WhatsApp tidak terinstall di perangkat Anda',
+          backgroundColor: AppColors.danger,
+          colorText: Colors.white,
+        );
+      }
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Gagal membuka WhatsApp: $e',
+        backgroundColor: AppColors.danger,
+        colorText: Colors.white,
+      );
+    }
   }
 
   void toggleSimulasiExpanded() {
@@ -266,7 +320,7 @@ class DetailMobilController extends GetxController {
     }
   }
 
-  Future<void> fetchTenorOptions() async {
+  Future<void> fetchTenorOptions(dynamic mobilId) async {
     try {
       final token = storageService.getToken();
 
@@ -274,7 +328,8 @@ class DetailMobilController extends GetxController {
         return;
       }
 
-      final String endpoint = '${BaseUrl.baseUrl}/mobil-detail/tenor-options';
+      final String endpoint =
+          '${BaseUrl.baseUrl}/mobil-detail/$mobilId/tenor-options';
 
       Map<String, String> headers = {
         'Accept': 'application/json',
@@ -286,15 +341,18 @@ class DetailMobilController extends GetxController {
         Uri.parse(endpoint),
         headers: headers,
       );
+
+      print('Tenor Options Response: ${response.body}');
+
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
 
         if (responseData['status'] == true) {
-          final List<dynamic> options = responseData['data'];
+          final List<dynamic> options = responseData['data']['tenor_options'];
           tenorOptions.value = List<Map<String, dynamic>>.from(options);
 
           if (tenorOptions.isNotEmpty) {
-            selectedTenor.value = 36;
+            selectedTenor.value = tenorOptions[0]['tenor'];
           }
         }
       } else {
@@ -306,13 +364,15 @@ class DetailMobilController extends GetxController {
     }
   }
 
-  Future<void> fetchDpOptions() async {
+  Future<void> fetchDpValidationInfo(dynamic mobilId) async {
     try {
       final token = storageService.getToken();
       if (token == null) {
         return;
       }
-      final String endpoint = '${BaseUrl.baseUrl}/mobil-detail/dp-options';
+
+      final String endpoint =
+          '${BaseUrl.baseUrl}/mobil-detail/$mobilId/dp-validation-info';
 
       Map<String, String> headers = {
         'Accept': 'application/json',
@@ -325,23 +385,34 @@ class DetailMobilController extends GetxController {
         headers: headers,
       );
 
+      print('DP Validation Response: ${response.body}');
+
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
 
         if (responseData['status'] == true) {
-          final List<dynamic> options = responseData['data'];
-          dpOptions.value = List<Map<String, dynamic>>.from(options);
+          dpValidationInfo.value = responseData['data'];
 
-          if (dpOptions.isNotEmpty) {
-            selectedDp.value = 20.0;
-          }
+          // Parse dengan helper method
+          dpMinimal.value =
+              parseToDouble(responseData['data']['dp_minimal_amount']);
+          dpMaksimal.value =
+              parseToDouble(responseData['data']['dp_maksimal_amount']);
+
+          // Set default DP amount to minimal
+          selectedDpAmount.value = dpMinimal.value;
+          dpController.text =
+              dpMinimal.value.toInt().toString().replaceAllMapped(
+                    RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                    (Match m) => '${m[1]}.',
+                  );
         }
       } else {
         print(
-            'Error fetchDpOptions: ${response.statusCode} - ${response.body}');
+            'Error fetchDpValidationInfo: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
-      print('Error fetchDpOptions: $e');
+      print('Error fetchDpValidationInfo: $e');
     }
   }
 
@@ -353,8 +424,28 @@ class DetailMobilController extends GetxController {
         return;
       }
 
-      isLoadingSimulasi.value = true;
+      // Clear previous error
       isSimulasiError.value = false;
+
+      // Minimal validation - hanya check basic requirements
+      if (selectedTenor.value <= 0) {
+        isSimulasiError.value = true;
+        simulasiErrorMessage.value = 'Silakan pilih tenor terlebih dahulu';
+        return;
+      }
+
+      if (selectedDpAmount.value <= 0) {
+        isSimulasiError.value = true;
+        simulasiErrorMessage.value =
+            'Silakan masukkan jumlah DP terlebih dahulu';
+        return;
+      }
+
+      // HILANGKAN VALIDASI RANGE DP DI FRONTEND
+      // Biarkan backend yang handle validasi range
+      // Frontend hanya check apakah ada input atau tidak
+
+      isLoadingSimulasi.value = true;
 
       final token = storageService.getToken();
 
@@ -376,8 +467,10 @@ class DetailMobilController extends GetxController {
 
       final Map<String, dynamic> payload = {
         'tenor': selectedTenor.value,
-        'dp_percentage': selectedDp.value,
+        'dp_amount': selectedDpAmount.value,
       };
+
+      print('Simulasi Kredit Payload: $payload');
 
       final response = await http.post(
         Uri.parse(endpoint),
@@ -385,11 +478,14 @@ class DetailMobilController extends GetxController {
         body: jsonEncode(payload),
       );
 
+      print('Simulasi Kredit Response: ${response.body}');
+
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
 
         if (responseData['status'] == true) {
           hasilSimulasi.value = responseData['data'];
+          isSimulasiError.value = false;
         } else {
           isSimulasiError.value = true;
           simulasiErrorMessage.value =
@@ -402,18 +498,38 @@ class DetailMobilController extends GetxController {
       } else if (response.statusCode == 422) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
         isSimulasiError.value = true;
-        simulasiErrorMessage.value =
-            'Validasi gagal: ${responseData['errors']}';
+
+        // Handle validation errors from backend dengan friendly message
+        if (responseData.containsKey('errors')) {
+          final errors = responseData['errors'];
+          String errorMessage = '';
+
+          if (errors is Map) {
+            errors.forEach((key, value) {
+              if (value is List && value.isNotEmpty) {
+                errorMessage += '${value[0]}\n';
+              }
+            });
+          }
+
+          simulasiErrorMessage.value = errorMessage.isNotEmpty
+              ? errorMessage.trim()
+              : 'Silakan periksa input Anda';
+        } else {
+          simulasiErrorMessage.value =
+              responseData['message'] ?? 'Silakan periksa input Anda';
+        }
       } else {
         isSimulasiError.value = true;
         simulasiErrorMessage.value =
-            'Terjadi kesalahan: ${response.statusCode}';
+            'Terjadi kesalahan pada server. Silakan coba lagi.';
         print(
             'Error hitungSimulasiKredit: ${response.statusCode} - ${response.body}');
       }
     } catch (e) {
       isSimulasiError.value = true;
-      simulasiErrorMessage.value = 'Terjadi kesalahan: $e';
+      simulasiErrorMessage.value =
+          'Terjadi kesalahan jaringan. Silakan coba lagi.';
       print('Error hitungSimulasiKredit: $e');
     } finally {
       isLoadingSimulasi.value = false;
@@ -426,8 +542,51 @@ class DetailMobilController extends GetxController {
     hitungSimulasiKredit();
   }
 
-  void changeDp(double dp) {
-    selectedDp.value = dp;
-    hitungSimulasiKredit();
+  void changeDpAmount(String value) {
+    final cleanValue = value.replaceAll('.', '').replaceAll(',', '');
+    final amount = parseToDouble(cleanValue);
+    selectedDpAmount.value = amount;
+    if (selectedTenor.value > 0 && amount > 0) {
+      hitungSimulasiKredit();
+    }
+  }
+
+  void validateAndUpdateDp() {
+    final text = dpController.text.replaceAll('.', '').replaceAll(',', '');
+    final amount = parseToDouble(text);
+
+    selectedDpAmount.value = amount;
+
+    if (amount > 0 && selectedTenor.value > 0) {
+      hitungSimulasiKredit();
+    }
+  }
+
+  // Helper method to format DP amount for display
+  String getFormattedDpAmount() {
+    return CurrencyFormatter.formatRupiah(selectedDpAmount.value);
+  }
+
+  // Helper method to get DP percentage
+  double getDpPercentage() {
+    if (dpValidationInfo.containsKey('harga_otr')) {
+      final hargaOtr = parseToDouble(dpValidationInfo['harga_otr']);
+      if (hargaOtr > 0) {
+        return (selectedDpAmount.value / hargaOtr) * 100;
+      }
+    }
+    return 0.0;
+  }
+
+  double parseToDouble(dynamic value) {
+    if (value == null) return 0.0;
+    if (value is double) return value;
+    if (value is int) return value.toDouble();
+    if (value is String) {
+      // Remove any currency formatting and parse
+      String cleanValue = value.replaceAll(RegExp(r'[^\d.]'), '');
+      return double.tryParse(cleanValue) ?? 0.0;
+    }
+    return 0.0;
   }
 }

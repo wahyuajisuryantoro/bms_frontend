@@ -242,8 +242,6 @@ class PasswordUpdateView extends GetView<PasswordUpdateController> {
                 ),
               ),
             )),
-
-        // Password strength indicator dengan Rx values dan animasi
         if (showStrengthIndicator)
           Obx(() {
             final password = this.controller.passwordText.value;
@@ -255,8 +253,6 @@ class PasswordUpdateView extends GetView<PasswordUpdateController> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SizedBox(height: AppResponsive.h(1.5)),
-                
-                // Progress bar dengan TweenAnimationBuilder untuk animasi halus
                 ClipRRect(
                   borderRadius: BorderRadius.circular(
                       AppResponsive.getResponsiveSize(5)),

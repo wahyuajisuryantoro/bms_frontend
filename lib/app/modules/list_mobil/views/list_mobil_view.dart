@@ -20,198 +20,205 @@ class ListMobilView extends GetView<ListMobilController> {
     return Scaffold(
       backgroundColor: AppColors.secondary,
       body: SafeArea(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: AppResponsive.padding(all: 2),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Obx(() => controller.isSearchFocused.value
-                        ? TextField(
-                            controller: controller.searchController,
-                            focusNode: controller.searchFocusNode,
-                            onChanged: controller.searchCars,
-                            autofocus: controller.isSearchFocused.value,
-                            decoration: InputDecoration(
-                              hintText: 'Cari mobil...',
-                              hintStyle:
-                                  AppText.bodyMedium(color: AppColors.grey),
-                              prefixIcon: Icon(
-                                Remix.search_2_line,
-                                color: AppColors.dark,
+        child: RefreshIndicator(
+          onRefresh: () async {
+            await controller.refreshData();
+          },
+          color: AppColors.primary,
+          backgroundColor: Colors.white,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: AppResponsive.padding(all: 2),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Obx(() => controller.isSearchFocused.value
+                          ? TextField(
+                              controller: controller.searchController,
+                              focusNode: controller.searchFocusNode,
+                              onChanged: controller.searchCars,
+                              autofocus: controller.isSearchFocused.value,
+                              decoration: InputDecoration(
+                                hintText: 'Cari mobil...',
+                                hintStyle:
+                                    AppText.bodyMedium(color: AppColors.grey),
+                                prefixIcon: Icon(
+                                  Remix.search_2_line,
+                                  color: AppColors.dark,
+                                ),
+                                suffixIcon: IconButton(
+                                  icon: Icon(Icons.close, color: AppColors.grey),
+                                  onPressed: () {
+                                    controller.searchController.clear();
+                                    controller.searchCars('');
+                                    controller.isSearchFocused.value = false;
+                                    FocusScope.of(context).unfocus();
+                                  },
+                                ),
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(
+                                        AppResponsive.getResponsiveSize(15)),
+                                    borderSide:
+                                        BorderSide(color: Colors.grey.shade300)),
+                                enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(
+                                        AppResponsive.getResponsiveSize(15)),
+                                    borderSide:
+                                        BorderSide(color: Colors.grey.shade300)),
+                                focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(
+                                        AppResponsive.getResponsiveSize(15)),
+                                    borderSide:
+                                        BorderSide(color: Colors.grey.shade300)),
                               ),
-                              suffixIcon: IconButton(
-                                icon: Icon(Icons.close, color: AppColors.grey),
-                                onPressed: () {
-                                  controller.searchController.clear();
-                                  controller.searchCars('');
-                                  controller.isSearchFocused.value = false;
-                                  FocusScope.of(context).unfocus();
-                                },
-                              ),
-                              filled: true,
-                              fillColor: Colors.white,
-                              border: OutlineInputBorder(
+                              style: AppText.bodyMedium(color: AppColors.dark),
+                            )
+                          : InkWell(
+                              onTap: () {
+                                controller.isSearchFocused.value = true;
+                                Future.delayed(Duration(milliseconds: 100), () {
+                                  controller.searchFocusNode.requestFocus();
+                                });
+                              },
+                              child: Container(
+                                height: 48,
+                                padding: EdgeInsets.symmetric(horizontal: 16),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
                                   borderRadius: BorderRadius.circular(
                                       AppResponsive.getResponsiveSize(15)),
-                                  borderSide:
-                                      BorderSide(color: Colors.grey.shade300)),
-                              enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(
-                                      AppResponsive.getResponsiveSize(15)),
-                                  borderSide:
-                                      BorderSide(color: Colors.grey.shade300)),
-                              focusedBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(
-                                      AppResponsive.getResponsiveSize(15)),
-                                  borderSide:
-                                      BorderSide(color: Colors.grey.shade300)),
-                            ),
-                            style: AppText.bodyMedium(color: AppColors.dark),
-                          )
-                        : InkWell(
-                            onTap: () {
-                              controller.isSearchFocused.value = true;
-                              Future.delayed(Duration(milliseconds: 100), () {
-                                controller.searchFocusNode.requestFocus();
-                              });
-                            },
-                            child: Container(
-                              height: 48,
-                              padding: EdgeInsets.symmetric(horizontal: 16),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(
-                                    AppResponsive.getResponsiveSize(15)),
-                                border: Border.all(color: Colors.grey.shade300),
+                                  border: Border.all(color: Colors.grey.shade300),
+                                ),
+                                alignment: Alignment.centerLeft,
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Remix.search_2_line,
+                                      color: AppColors.dark,
+                                    ),
+                                    SizedBox(width: 10),
+                                    Text(
+                                      'Cari mobil...',
+                                      style: AppText.bodyMedium(
+                                          color: AppColors.grey),
+                                    ),
+                                  ],
+                                ),
                               ),
-                              alignment: Alignment.centerLeft,
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Remix.search_2_line,
-                                    color: AppColors.dark,
-                                  ),
-                                  SizedBox(width: 10),
-                                  Text(
-                                    'Cari mobil...',
-                                    style: AppText.bodyMedium(
-                                        color: AppColors.grey),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )),
-                  ),
-                  SizedBox(width: AppResponsive.w(2)),
-                  GestureDetector(
-                    onTap: () {
-                      showModalBottomSheet(
-                        context: context,
-                        isScrollControlled: true,
-                        backgroundColor: Colors.transparent,
-                        builder: (context) => _buildFilterBottomSheet(),
-                      );
-                    },
-                    child: Icon(
-                      Remix.sound_module_line,
-                      color: AppColors.dark,
-                      size: AppResponsive.getResponsiveSize(20),
+                            )),
                     ),
-                  ),
-                ],
+                    SizedBox(width: AppResponsive.w(2)),
+                    GestureDetector(
+                      onTap: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (context) => _buildFilterBottomSheet(),
+                        );
+                      },
+                      child: Icon(
+                        Remix.sound_module_line,
+                        color: AppColors.dark,
+                        size: AppResponsive.getResponsiveSize(20),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            Expanded(
-              child: Obx(() {
-                if (controller.isLoading.value) {
-                  return Center(
-                    child:AnimationLoading.container(
-                      height : 100
-                    )
-                  );
-                }
+              Expanded(
+                child: Obx(() {
+                  if (controller.isLoading.value) {
+                    return Center(
+                      child:AnimationLoading.container(
+                        height : 100
+                      )
+                    );
+                  }
 
-                if (controller.isError.value) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.error_outline,
-                          color: AppColors.danger,
-                          size: 60,
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          controller.errorMessage.value,
-                          style: AppText.h5(color: AppColors.grey),
-                          textAlign: TextAlign.center,
-                        ),
-                        SizedBox(height: 20),
-                        ElevatedButton(
-                          onPressed: () => controller.fetchMobil(),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: AppColors.primary,
-                            padding: EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 10),
+                  if (controller.isError.value) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Icons.error_outline,
+                            color: AppColors.danger,
+                            size: 60,
                           ),
-                          child: Text('Coba Lagi'),
-                        ),
-                      ],
-                    ),
-                  );
-                }
-
-                final filteredCars = controller.filteredCarListings;
-                if (filteredCars.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Remix.search_2_line,
-                          size: 60,
-                          color: AppColors.grey,
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          'Tidak ada mobil ditemukan',
-                          style: AppText.h5(color: AppColors.grey),
-                        ),
-                        if (controller.searchQuery.value.isNotEmpty ||
-                            controller.activeFilters.value.isNotEmpty)
-                          Padding(
-                            padding: EdgeInsets.only(top: 8),
-                            child: Text(
-                              'Coba menggunakan filter lain',
-                              style: AppText.bodyMedium(color: AppColors.grey),
+                          SizedBox(height: 16),
+                          Text(
+                            controller.errorMessage.value,
+                            style: AppText.h5(color: AppColors.grey),
+                            textAlign: TextAlign.center,
+                          ),
+                          SizedBox(height: 20),
+                          ElevatedButton(
+                            onPressed: () => controller.fetchMobil(),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppColors.primary,
+                              padding: EdgeInsets.symmetric(
+                                  horizontal: 20, vertical: 10),
                             ),
+                            child: Text('Coba Lagi'),
                           ),
-                      ],
-                    ),
-                  );
-                }
+                        ],
+                      ),
+                    );
+                  }
 
-                return GridView.builder(
-                  padding: AppResponsive.padding(horizontal: 4, vertical: 2),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 0.65,
-                    crossAxisSpacing: AppResponsive.w(2),
-                    mainAxisSpacing: AppResponsive.h(2),
-                  ),
-                  itemCount: filteredCars.length,
-                  itemBuilder: (context, index) {
-                    final car = filteredCars[index];
-                    return _buildCarCard(car);
-                  },
-                );
-              }),
-            ),
-          ],
+                  final filteredCars = controller.filteredCarListings;
+                  if (filteredCars.isEmpty) {
+                    return Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            Remix.search_2_line,
+                            size: 60,
+                            color: AppColors.grey,
+                          ),
+                          SizedBox(height: 16),
+                          Text(
+                            'Tidak ada mobil ditemukan',
+                            style: AppText.h5(color: AppColors.grey),
+                          ),
+                          if (controller.searchQuery.value.isNotEmpty ||
+                              controller.activeFilters.value.isNotEmpty)
+                            Padding(
+                              padding: EdgeInsets.only(top: 8),
+                              child: Text(
+                                'Coba menggunakan filter lain',
+                                style: AppText.bodyMedium(color: AppColors.grey),
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
+                  }
+
+                  return GridView.builder(
+                    padding: AppResponsive.padding(horizontal: 4, vertical: 2),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 2,
+                      childAspectRatio: 0.65,
+                      crossAxisSpacing: AppResponsive.w(2),
+                      mainAxisSpacing: AppResponsive.h(2),
+                    ),
+                    itemCount: filteredCars.length,
+                    itemBuilder: (context, index) {
+                      final car = filteredCars[index];
+                      return _buildCarCard(car);
+                    },
+                  );
+                }),
+              ),
+            ],
+          ),
         ),
       ),
       bottomNavigationBar: CustomBottomNavigationBar(),
@@ -537,11 +544,9 @@ class ListMobilView extends GetView<ListMobilController> {
                                       } else if (entry.key == 'fuelType') {
                                         activeFilters.remove('fuelType');
                                         activeFilters.remove('bahan_bakar_id');
-                                      } else if (entry.key ==
-                                          'engineCapacity') {
+                                      } else if (entry.key == 'engineCapacity') {
                                         activeFilters.remove('engineCapacity');
-                                        activeFilters
-                                            .remove('kapasitas_mesin_id');
+                                        activeFilters.remove('kapasitas_mesin_id');
                                       } else if (entry.key == 'color') {
                                         activeFilters.remove('color');
                                         activeFilters.remove('warna_id');

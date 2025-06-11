@@ -28,234 +28,34 @@ class HomeView extends GetView<HomeController> {
       child: Scaffold(
         backgroundColor: AppColors.secondary,
         body: SafeArea(
-          child: SingleChildScrollView(
-            child: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(Remix.map_pin_2_line,
-                              color: AppColors.primary, size: 20),
-                          SizedBox(width: 6),
-                          Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Showroom',
-                                style: AppText.small(color: AppColors.grey),
-                              ),
-                              Text(
-                                'Bursa Mobil Solo',
-                                style: AppText.pSmall(color: AppColors.dark),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                      Image.asset(
-                        'assets/images/logo.png',
-                        fit: BoxFit.contain,
-                        width: 50,
-                        height: 50,
-                      ),
-                    ],
-                  ),
-                  SizedBox(
-                    height: AppResponsive.h(2),
-                  ),
-                  Text(
-                    'Selamat Datang',
-                    style: AppText.h3(color: AppColors.dark),
-                  ),
-                  Obx(() => Text(
-                        controller.userName.value,
-                        style: AppText.h4(color: AppColors.dark),
-                        overflow: TextOverflow.ellipsis,
-                      )),
-                  SizedBox(height: 16),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: AppColors.whiteOld,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                    child: InkWell(
-                      onTap: () {
-                        Get.toNamed(Routes.LIST_MOBIL,
-                            arguments: {'openSearch': true});
-                      },
-                      child: Container(
-                        height: 48,
-                        child: Row(
-                          children: [
-                            Icon(Remix.search_2_line,
-                                color: AppColors.grey, size: 22),
-                            SizedBox(width: 10),
-                            Text(
-                              'Cari Mobil...',
-                              style: AppText.p(color: AppColors.grey),
-                            ),
-                            Spacer(),
-                            Icon(Remix.equalizer_line,
-                                color: AppColors.dark, size: 20),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  SizedBox(
-                    height: AppResponsive.h(2),
-                  ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Pilih berdasarkan brands',
-                        style: AppText.h6(color: AppColors.dark),
-                      ),
-                      Obx(
-                        () => controller.brands.length >
-                                controller.maxBrandsToShow
-                            ? GestureDetector(
-                                onTap: () =>
-                                    controller.isExpandedBrands.toggle(),
-                                child: Row(
-                                  children: [
-                                    Text(
-                                      controller.isExpandedBrands.value
-                                          ? 'Tutup'
-                                          : 'Lihat Semua',
-                                      style: AppText.small(
-                                          color: AppColors.primary),
-                                    ),
-                                    SizedBox(width: 4),
-                                    Icon(
-                                        controller.isExpandedBrands.value
-                                            ? Remix.arrow_up_line
-                                            : Remix.arrow_right_line,
-                                        color: AppColors.primary,
-                                        size: 18),
-                                  ],
-                                ),
-                              )
-                            : SizedBox.shrink(),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: AppResponsive.h(2)),
-                  Obx(() => controller.isLoadingBrands.value
-                      ? AnimationLoading.container(
-                          height: 110,
-                        )
-                      : Container(
-                          height: controller.isExpandedBrands.value &&
-                                  controller.brands.length >
-                                      controller.maxBrandsToShow
-                              ? (110 *
-                                  ((controller.brands.length / 3)
-                                      .ceil()
-                                      .toDouble()))
-                              : 110.0,
-                          child: Obx(() {
-                            final isExpanded =
-                                controller.isExpandedBrands.value;
-                            final brandsToShow = isExpanded
-                                ? controller.brands
-                                : controller.brands
-                                    .take(controller.maxBrandsToShow)
-                                    .toList();
-
-                            if (isExpanded &&
-                                controller.brands.length >
-                                    controller.maxBrandsToShow) {
-                              return GridView.builder(
-                                gridDelegate:
-                                    SliverGridDelegateWithFixedCrossAxisCount(
-                                  crossAxisCount: 3,
-                                  childAspectRatio: 1,
-                                  crossAxisSpacing: 10,
-                                  mainAxisSpacing: 10,
-                                ),
-                                itemCount: controller.brands.length,
-                                physics: NeverScrollableScrollPhysics(),
-                                padding: EdgeInsets.zero,
-                                itemBuilder: (context, index) {
-                                  final brand = controller.brands[index];
-                                  final String image = brand['image'] as String;
-                                  final String name = brand['name'] as String;
-                                  final int id = brand['id'] as int;
-
-                                  return GestureDetector(
-                                    child: _buildBrandLogo(image, name, false),
-                                  );
-                                },
-                              );
-                            } else {
-                              return ListView.builder(
-                                scrollDirection: Axis.horizontal,
-                                itemCount: brandsToShow.length,
-                                physics: BouncingScrollPhysics(),
-                                itemBuilder: (context, index) {
-                                  final brand = brandsToShow[index];
-                                  final String image = brand['image'] as String;
-                                  final String name = brand['name'] as String;
-                                  final int id = brand['id'] as int;
-
-                                  return Padding(
-                                    padding:
-                                        EdgeInsets.symmetric(horizontal: 8.0),
-                                    child: _buildBrandLogo(image, name, false),
-                                  );
-                                },
-                              );
-                            }
-                          }),
-                        )),
-                  SizedBox(height: AppResponsive.h(2)),
-                  Text(
-                    'Pilih berdasarkan transmisi',
-                    style: AppText.h6(color: AppColors.dark),
-                  ),
-                  SizedBox(height: AppResponsive.h(2)),
-                  Obx(() => controller.isLoadingTransmissions.value
-                      ? AnimationLoading.container(
-                          height: 60,
-                        )
-                      : SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: controller.transmissions
-                                .asMap()
-                                .entries
-                                .map((entry) {
-                              int idx = entry.key;
-                              Map<String, dynamic> item = entry.value;
-                              int itemId = item['id'] as int;
-                              bool isSelected = item['isSelected'] as bool;
-
-                              return Padding(
-                                padding: EdgeInsets.only(
-                                    right: 12, left: idx == 0 ? 0 : 0),
-                                child: GestureDetector(
-                                  child: _buildTransmissionOption(
-                                    item['name'],
-                                    isSelected,
-                                  ),
-                                ),
-                              );
-                            }).toList(),
-                          ),
-                        )),
-                  SizedBox(height: AppResponsive.h(3)),
-                  buildCarListingsSlider(),
-                  SizedBox(height: AppResponsive.h(2)),
-                ],
+          child: RefreshIndicator(
+            onRefresh: () async {
+              await controller.refreshData();
+            },
+            color: AppColors.primary,
+            backgroundColor: Colors.white,
+            child: SingleChildScrollView(
+              physics: AlwaysScrollableScrollPhysics(), // Penting untuk RefreshIndicator
+              child: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: 16),
+                    _buildHeader(),
+                    SizedBox(height: AppResponsive.h(2)),
+                    _buildWelcomeSection(),
+                    SizedBox(height: 16),
+                    _buildSearchBar(),
+                    SizedBox(height: AppResponsive.h(2)),
+                    _buildBrandsSection(),
+                    SizedBox(height: AppResponsive.h(2)),
+                    _buildTransmissionsSection(),
+                    SizedBox(height: AppResponsive.h(3)),
+                    buildCarListingsSlider(),
+                    SizedBox(height: AppResponsive.h(2)),
+                  ],
+                ),
               ),
             ),
           ),
@@ -265,6 +65,248 @@ class HomeView extends GetView<HomeController> {
     );
   }
 
+  Widget _buildHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            Icon(Remix.map_pin_2_line, color: AppColors.primary, size: 20),
+            SizedBox(width: 6),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Showroom',
+                  style: AppText.small(color: AppColors.grey),
+                ),
+                Text(
+                  'Bursa Mobil Solo',
+                  style: AppText.pSmall(color: AppColors.dark),
+                ),
+              ],
+            ),
+          ],
+        ),
+        Row(
+          children: [
+            // Tombol refresh manual
+            Obx(() => controller.isRefreshing.value
+                ? SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.primary),
+                    ),
+                  )
+                : IconButton(
+                    onPressed: () => controller.refreshData(),
+                    icon: Icon(
+                      Remix.refresh_line,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
+                    padding: EdgeInsets.zero,
+                    constraints: BoxConstraints(),
+                  )),
+            SizedBox(width: 8),
+            Image.asset(
+              'assets/images/logo.png',
+              fit: BoxFit.contain,
+              width: 50,
+              height: 50,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWelcomeSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Selamat Datang',
+          style: AppText.h3(color: AppColors.dark),
+        ),
+        Obx(() => Text(
+              controller.userName.value,
+              style: AppText.h4(color: AppColors.dark),
+              overflow: TextOverflow.ellipsis,
+            )),
+      ],
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.whiteOld,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      padding: EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: InkWell(
+        onTap: () {
+          Get.toNamed(Routes.LIST_MOBIL, arguments: {'openSearch': true});
+        },
+        child: Container(
+          height: 48,
+          child: Row(
+            children: [
+              Icon(Remix.search_2_line, color: AppColors.grey, size: 22),
+              SizedBox(width: 10),
+              Text(
+                'Cari Mobil...',
+                style: AppText.p(color: AppColors.grey),
+              ),
+              Spacer(),
+              Icon(Remix.equalizer_line, color: AppColors.dark, size: 20),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBrandsSection() {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Pilih berdasarkan brands',
+              style: AppText.h6(color: AppColors.dark),
+            ),
+            Obx(
+              () => controller.brands.length > controller.maxBrandsToShow
+                  ? GestureDetector(
+                      onTap: () => controller.isExpandedBrands.toggle(),
+                      child: Row(
+                        children: [
+                          Text(
+                            controller.isExpandedBrands.value ? 'Tutup' : 'Lihat Semua',
+                            style: AppText.small(color: AppColors.primary),
+                          ),
+                          SizedBox(width: 4),
+                          Icon(
+                            controller.isExpandedBrands.value
+                                ? Remix.arrow_up_line
+                                : Remix.arrow_right_line,
+                            color: AppColors.primary,
+                            size: 18,
+                          ),
+                        ],
+                      ),
+                    )
+                  : SizedBox.shrink(),
+            ),
+          ],
+        ),
+        SizedBox(height: AppResponsive.h(2)),
+        Obx(() => controller.isLoadingBrands.value
+            ? AnimationLoading.container(height: 110)
+            : _buildBrandsGrid()),
+      ],
+    );
+  }
+
+  Widget _buildBrandsGrid() {
+    return Container(
+      height: controller.isExpandedBrands.value &&
+              controller.brands.length > controller.maxBrandsToShow
+          ? (110 * ((controller.brands.length / 3).ceil().toDouble()))
+          : 110.0,
+      child: Obx(() {
+        final isExpanded = controller.isExpandedBrands.value;
+        final brandsToShow = isExpanded
+            ? controller.brands
+            : controller.brands.take(controller.maxBrandsToShow).toList();
+
+        if (isExpanded && controller.brands.length > controller.maxBrandsToShow) {
+          return GridView.builder(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 3,
+              childAspectRatio: 1,
+              crossAxisSpacing: 10,
+              mainAxisSpacing: 10,
+            ),
+            itemCount: controller.brands.length,
+            physics: NeverScrollableScrollPhysics(),
+            padding: EdgeInsets.zero,
+            itemBuilder: (context, index) {
+              final brand = controller.brands[index];
+              final String image = brand['image'] as String;
+              final String name = brand['name'] as String;
+              final int id = brand['id'] as int;
+
+              return GestureDetector(
+                child: _buildBrandLogo(image, name, false),
+              );
+            },
+          );
+        } else {
+          return ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: brandsToShow.length,
+            physics: BouncingScrollPhysics(),
+            itemBuilder: (context, index) {
+              final brand = brandsToShow[index];
+              final String image = brand['image'] as String;
+              final String name = brand['name'] as String;
+              final int id = brand['id'] as int;
+
+              return Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8.0),
+                child: _buildBrandLogo(image, name, false),
+              );
+            },
+          );
+        }
+      }),
+    );
+  }
+
+  Widget _buildTransmissionsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Pilih berdasarkan transmisi',
+          style: AppText.h6(color: AppColors.dark),
+        ),
+        SizedBox(height: AppResponsive.h(2)),
+        Obx(() => controller.isLoadingTransmissions.value
+            ? AnimationLoading.container(height: 60)
+            : SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: controller.transmissions.asMap().entries.map((entry) {
+                    int idx = entry.key;
+                    Map<String, dynamic> item = entry.value;
+                    int itemId = item['id'] as int;
+                    bool isSelected = item['isSelected'] as bool;
+
+                    return Padding(
+                      padding: EdgeInsets.only(right: 12, left: idx == 0 ? 0 : 0),
+                      child: GestureDetector(
+                        child: _buildTransmissionOption(
+                          item['name'],
+                          isSelected,
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              )),
+      ],
+    );
+  }
+
+  // Cache info widget untuk debugging (opsional)
+  
   Widget _buildBrandLogo(String image, String name, [bool isSelected = false]) {
     return Container(
       width: Get.width * 0.25,
@@ -564,16 +606,21 @@ class HomeView extends GetView<HomeController> {
               'Mobil Tersedia',
               style: AppText.h6(color: AppColors.dark),
             ),
-            Row(
-              children: [
-                Text(
-                  'Lihat Semua',
-                  style: AppText.small(color: AppColors.primary),
-                ),
-                SizedBox(width: 4),
-                Icon(Remix.arrow_right_line,
-                    color: AppColors.primary, size: 18),
-              ],
+            GestureDetector(
+              onTap: () {
+                Get.toNamed(Routes.LIST_MOBIL);
+              },
+              child: Row(
+                children: [
+                  Text(
+                    'Lihat Semua',
+                    style: AppText.small(color: AppColors.primary),
+                  ),
+                  SizedBox(width: 4),
+                  Icon(Remix.arrow_right_line,
+                      color: AppColors.primary, size: 18),
+                ],
+              ),
             ),
           ],
         ),

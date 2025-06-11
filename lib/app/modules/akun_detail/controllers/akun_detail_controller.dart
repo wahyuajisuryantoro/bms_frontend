@@ -16,13 +16,13 @@ class AkunDetailController extends GetxController {
 
   // Data pengguna yang dapat diedit
   final userData = <String, dynamic>{}.obs;
-  
+
   // Data wilayah Indonesia
   final provinces = <Map<String, dynamic>>[].obs;
   final regencies = <Map<String, dynamic>>[].obs;
   final districts = <Map<String, dynamic>>[].obs;
   final villages = <Map<String, dynamic>>[].obs;
-  
+
   // Selected IDs untuk dropdown
   final selectedProvinceId = Rxn<String>();
   final selectedRegencyId = Rxn<String>();
@@ -100,16 +100,18 @@ class AkunDetailController extends GetxController {
           'Authorization': 'Bearer $token',
         },
       );
-
+      
+      print('Profile response: ${response.body}');
+      
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
-        
+
         if (responseData['status'] == true && responseData['data'] != null) {
           final data = responseData['data'];
           final user = data['user'] ?? {};
           final detail = data['detail'] ?? {};
 
-          // Update userData
+          // PURE API: Set userData dengan photo_url dari backend
           userData.value = {
             'id': user['id'],
             'name': user['name'] ?? '',
@@ -120,6 +122,7 @@ class AkunDetailController extends GetxController {
             'alamat_lengkap': detail['alamat_lengkap'] ?? '',
             'kode_pos': detail['kode_pos'] ?? '',
             'foto': detail['foto'] ?? '',
+            'photo_url': detail['photo_url'] ?? '', // IMPORTANT: Dari backend
             'province_id': detail['province_id'],
             'regency_id': detail['regency_id'],
             'district_id': detail['district_id'],
@@ -130,6 +133,8 @@ class AkunDetailController extends GetxController {
             'village': detail['village'],
           };
 
+          print('userData photo_url: ${userData['photo_url']}');
+
           // Update controllers
           nameController.text = userData['name'] ?? '';
           emailController.text = userData['email'] ?? '';
@@ -139,24 +144,19 @@ class AkunDetailController extends GetxController {
           kodePosController.text = userData['kode_pos'] ?? '';
 
           // Update selected region IDs
-          selectedProvinceId.value = detail['province_id'];
-          selectedRegencyId.value = detail['regency_id'];
-          selectedDistrictId.value = detail['district_id'];
-          selectedVillageId.value = detail['village_id'];
-
-          // Update profile image URL
-          if (detail['foto'] != null && detail['foto'].toString().isNotEmpty) {
-            profileImageUrl.value = '${BaseUrl.baseUrl}/storage/photos/${detail['foto']}';
-          }
+          selectedProvinceId.value = detail['province_id']?.toString();
+          selectedRegencyId.value = detail['regency_id']?.toString();
+          selectedDistrictId.value = detail['district_id']?.toString();
+          selectedVillageId.value = detail['village_id']?.toString();
 
           // Load regions if IDs exist
-          if (selectedProvinceId.value != null) {
+          if (selectedProvinceId.value != null && selectedProvinceId.value!.isNotEmpty) {
             await loadRegencies(selectedProvinceId.value!);
           }
-          if (selectedRegencyId.value != null) {
+          if (selectedRegencyId.value != null && selectedRegencyId.value!.isNotEmpty) {
             await loadDistricts(selectedRegencyId.value!);
           }
-          if (selectedDistrictId.value != null) {
+          if (selectedDistrictId.value != null && selectedDistrictId.value!.isNotEmpty) {
             await loadVillages(selectedDistrictId.value!);
           }
         }
@@ -179,6 +179,7 @@ class AkunDetailController extends GetxController {
     }
   }
 
+
   // Load provinces
   Future<void> loadProvinces() async {
     try {
@@ -197,7 +198,8 @@ class AkunDetailController extends GetxController {
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
         if (responseData['status'] == true && responseData['data'] != null) {
-          provinces.value = List<Map<String, dynamic>>.from(responseData['data']);
+          provinces.value =
+              List<Map<String, dynamic>>.from(responseData['data']);
         }
       }
     } catch (e) {
@@ -230,7 +232,8 @@ class AkunDetailController extends GetxController {
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
         if (responseData['status'] == true && responseData['data'] != null) {
-          regencies.value = List<Map<String, dynamic>>.from(responseData['data']);
+          regencies.value =
+              List<Map<String, dynamic>>.from(responseData['data']);
         }
       }
     } catch (e) {
@@ -261,7 +264,8 @@ class AkunDetailController extends GetxController {
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
         if (responseData['status'] == true && responseData['data'] != null) {
-          districts.value = List<Map<String, dynamic>>.from(responseData['data']);
+          districts.value =
+              List<Map<String, dynamic>>.from(responseData['data']);
         }
       }
     } catch (e) {
@@ -290,7 +294,8 @@ class AkunDetailController extends GetxController {
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
         if (responseData['status'] == true && responseData['data'] != null) {
-          villages.value = List<Map<String, dynamic>>.from(responseData['data']);
+          villages.value =
+              List<Map<String, dynamic>>.from(responseData['data']);
         }
       }
     } catch (e) {
@@ -357,7 +362,7 @@ class AkunDetailController extends GetxController {
       // Cancel edit mode
       isEditMode.value = false;
       selectedImageFile.value = null;
-      
+
       // Reset form data
       nameController.text = userData['name'] ?? '';
       emailController.text = userData['email'] ?? '';
@@ -365,7 +370,7 @@ class AkunDetailController extends GetxController {
       dusunController.text = userData['dusun'] ?? '';
       alamatLengkapController.text = userData['alamat_lengkap'] ?? '';
       kodePosController.text = userData['kode_pos'] ?? '';
-      
+
       selectedProvinceId.value = userData['province_id'];
       selectedRegencyId.value = userData['regency_id'];
       selectedDistrictId.value = userData['district_id'];
@@ -403,16 +408,20 @@ class AkunDetailController extends GetxController {
       };
 
       // Only add non-null values
-      if (selectedProvinceId.value != null && selectedProvinceId.value!.isNotEmpty) {
+      if (selectedProvinceId.value != null &&
+          selectedProvinceId.value!.isNotEmpty) {
         fields['province_id'] = selectedProvinceId.value!;
       }
-      if (selectedRegencyId.value != null && selectedRegencyId.value!.isNotEmpty) {
+      if (selectedRegencyId.value != null &&
+          selectedRegencyId.value!.isNotEmpty) {
         fields['regency_id'] = selectedRegencyId.value!;
       }
-      if (selectedDistrictId.value != null && selectedDistrictId.value!.isNotEmpty) {
+      if (selectedDistrictId.value != null &&
+          selectedDistrictId.value!.isNotEmpty) {
         fields['district_id'] = selectedDistrictId.value!;
       }
-      if (selectedVillageId.value != null && selectedVillageId.value!.isNotEmpty) {
+      if (selectedVillageId.value != null &&
+          selectedVillageId.value!.isNotEmpty) {
         fields['village_id'] = selectedVillageId.value!;
       }
       if (dusunController.text.trim().isNotEmpty) {
@@ -469,11 +478,11 @@ class AkunDetailController extends GetxController {
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
-        
+
         if (responseData['status'] == true) {
           // Update local data
           await loadUserProfile();
-          
+
           // Exit edit mode
           isEditMode.value = false;
           selectedImageFile.value = null;
@@ -499,7 +508,7 @@ class AkunDetailController extends GetxController {
         // Validation error
         final responseData = jsonDecode(response.body);
         final errors = responseData['errors'] as Map<String, dynamic>?;
-        
+
         if (errors != null && errors.isNotEmpty) {
           // Build error message from all errors
           List<String> errorMessages = [];
@@ -556,7 +565,7 @@ class AkunDetailController extends GetxController {
     if (value != null && value.isNotEmpty) {
       // Remove all non-digit characters
       final phoneDigits = value.replaceAll(RegExp(r'\D'), '');
-      
+
       if (phoneDigits.length < 10 || phoneDigits.length > 15) {
         return 'Nomor telepon tidak valid';
       }

@@ -10,7 +10,7 @@ import '../controllers/akun_detail_controller.dart';
 
 class AkunDetailView extends GetView<AkunDetailController> {
   const AkunDetailView({super.key});
-  
+
   @override
   Widget build(BuildContext context) {
     AppResponsive().init(context);
@@ -35,17 +35,19 @@ class AkunDetailView extends GetView<AkunDetailController> {
         ),
         actions: [
           Obx(() => IconButton(
-            onPressed: controller.isLoading.value ? null : controller.toggleEditMode,
-            icon: Icon(
-              controller.isEditMode.value
-                  ? Remix.close_line
-                  : Remix.edit_line,
-              color: controller.isEditMode.value
-                  ? AppColors.danger
-                  : AppColors.dark,
-              size: AppResponsive.getResponsiveSize(24),
-            ),
-          )),
+                onPressed: controller.isLoading.value
+                    ? null
+                    : controller.toggleEditMode,
+                icon: Icon(
+                  controller.isEditMode.value
+                      ? Remix.close_line
+                      : Remix.edit_line,
+                  color: controller.isEditMode.value
+                      ? AppColors.danger
+                      : AppColors.dark,
+                  size: AppResponsive.getResponsiveSize(24),
+                ),
+              )),
         ],
       ),
       body: Obx(() {
@@ -57,7 +59,7 @@ class AkunDetailView extends GetView<AkunDetailController> {
             ),
           );
         }
-        
+
         if (controller.isSaving.value) {
           return Center(
             child: Column(
@@ -76,27 +78,20 @@ class AkunDetailView extends GetView<AkunDetailController> {
             ),
           );
         }
-        
+
         return SingleChildScrollView(
           physics: const BouncingScrollPhysics(),
           padding: AppResponsive.padding(all: 4),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Foto profil dengan tombol edit
               _buildProfilePhoto(),
               SizedBox(height: AppResponsive.h(4)),
-
-              // Detail informasi
-              controller.isEditMode.value 
-                ? _buildEditForm(context)
-                : _buildProfileDetails(context),
-                
+              controller.isEditMode.value
+                  ? _buildEditForm(context)
+                  : _buildProfileDetails(context),
               SizedBox(height: AppResponsive.h(8)),
-              
-              // Tampilkan tombol save hanya dalam mode edit
-              if (controller.isEditMode.value)
-                _buildSaveButton(),
+              if (controller.isEditMode.value) _buildSaveButton(),
             ],
           ),
         );
@@ -108,7 +103,6 @@ class AkunDetailView extends GetView<AkunDetailController> {
     return Center(
       child: Stack(
         children: [
-          // Foto profil
           Container(
             width: AppResponsive.h(14),
             height: AppResponsive.h(14),
@@ -129,19 +123,23 @@ class AkunDetailView extends GetView<AkunDetailController> {
             child: ClipRRect(
               borderRadius: BorderRadius.circular(AppResponsive.h(14)),
               child: Obx(() {
-                // Show selected image if in edit mode
-                if (controller.isEditMode.value && controller.selectedImageFile.value != null) {
+                if (controller.isEditMode.value &&
+                    controller.selectedImageFile.value != null) {
                   return Image.file(
                     controller.selectedImageFile.value!,
                     fit: BoxFit.cover,
                   );
-                }
-                // Show profile image from server
-                else if (controller.profileImageUrl.value.isNotEmpty) {
+                } else if (controller.userData['photo_url'] != null &&
+                    controller.userData['photo_url'].toString().isNotEmpty) {
+                  String imageUrl = controller.userData['photo_url'].toString();
+                  print('Loading image from userData photo_url: $imageUrl');
+
                   return Image.network(
-                    controller.profileImageUrl.value,
+                    imageUrl,
                     fit: BoxFit.cover,
                     errorBuilder: (context, error, stackTrace) {
+                      print('Error loading image: $error');
+                      print('Failed URL: $imageUrl');
                       return _buildDefaultAvatar();
                     },
                     loadingBuilder: (context, child, loadingProgress) {
@@ -157,15 +155,15 @@ class AkunDetailView extends GetView<AkunDetailController> {
                       );
                     },
                   );
-                }
-                // Show default avatar
-                else {
+                } else {
+                  print('No profile image URL found in userData');
+                  print(
+                      'userData photo_url: ${controller.userData['photo_url']}');
                   return _buildDefaultAvatar();
                 }
               }),
             ),
           ),
-          // Tombol edit foto (only in edit mode)
           if (controller.isEditMode.value)
             Positioned(
               bottom: 0,
@@ -213,13 +211,13 @@ class AkunDetailView extends GetView<AkunDetailController> {
     );
   }
 
-  // Widget untuk menampilkan detail profil dalam mode view
   Widget _buildProfileDetails(BuildContext context) {
     return Container(
       padding: AppResponsive.padding(all: 4),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(AppResponsive.getResponsiveSize(20)),
+        borderRadius:
+            BorderRadius.circular(AppResponsive.getResponsiveSize(20)),
         boxShadow: [
           BoxShadow(
             color: AppColors.shadow.withOpacity(0.1),
@@ -236,8 +234,6 @@ class AkunDetailView extends GetView<AkunDetailController> {
             style: AppText.h5(color: AppColors.dark),
           ),
           SizedBox(height: AppResponsive.h(3)),
-
-          // Informasi detail
           _buildInfoItem(
             context,
             icon: Remix.user_3_line,
@@ -256,17 +252,13 @@ class AkunDetailView extends GetView<AkunDetailController> {
             label: 'No. WhatsApp',
             value: controller.userData['no_wa'] ?? '-',
           ),
-          
           SizedBox(height: AppResponsive.h(3)),
-
-          // Alamat
           Text(
             'Alamat',
             style: AppText.h5(color: AppColors.dark),
           ),
           SizedBox(height: AppResponsive.h(2)),
-          
-          if (controller.userData['alamat_lengkap'] != null && 
+          if (controller.userData['alamat_lengkap'] != null &&
               controller.userData['alamat_lengkap'].toString().isNotEmpty)
             _buildInfoItem(
               context,
@@ -274,8 +266,7 @@ class AkunDetailView extends GetView<AkunDetailController> {
               label: 'Alamat Lengkap',
               value: controller.userData['alamat_lengkap'] ?? '-',
             ),
-          
-          if (controller.userData['dusun'] != null && 
+          if (controller.userData['dusun'] != null &&
               controller.userData['dusun'].toString().isNotEmpty)
             _buildInfoItem(
               context,
@@ -283,7 +274,6 @@ class AkunDetailView extends GetView<AkunDetailController> {
               label: 'Dusun',
               value: controller.userData['dusun'] ?? '-',
             ),
-            
           if (controller.userData['village'] != null)
             _buildInfoItem(
               context,
@@ -291,7 +281,6 @@ class AkunDetailView extends GetView<AkunDetailController> {
               label: 'Kelurahan/Desa',
               value: controller.userData['village']['name'] ?? '-',
             ),
-            
           if (controller.userData['district'] != null)
             _buildInfoItem(
               context,
@@ -299,7 +288,6 @@ class AkunDetailView extends GetView<AkunDetailController> {
               label: 'Kecamatan',
               value: controller.userData['district']['name'] ?? '-',
             ),
-            
           if (controller.userData['regency'] != null)
             _buildInfoItem(
               context,
@@ -307,7 +295,6 @@ class AkunDetailView extends GetView<AkunDetailController> {
               label: 'Kota/Kabupaten',
               value: controller.userData['regency']['name'] ?? '-',
             ),
-            
           if (controller.userData['province'] != null)
             _buildInfoItem(
               context,
@@ -315,7 +302,6 @@ class AkunDetailView extends GetView<AkunDetailController> {
               label: 'Provinsi',
               value: controller.userData['province']['name'] ?? '-',
             ),
-            
           _buildInfoItem(
             context,
             icon: Remix.mail_send_line,
@@ -328,7 +314,6 @@ class AkunDetailView extends GetView<AkunDetailController> {
     );
   }
 
-  // Widget untuk item informasi
   Widget _buildInfoItem(
     BuildContext context, {
     required IconData icon,
@@ -341,12 +326,12 @@ class AkunDetailView extends GetView<AkunDetailController> {
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Icon
             Container(
               padding: AppResponsive.padding(all: 2),
               decoration: BoxDecoration(
                 color: AppColors.primary.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(AppResponsive.getResponsiveSize(10)),
+                borderRadius:
+                    BorderRadius.circular(AppResponsive.getResponsiveSize(10)),
               ),
               child: Icon(
                 icon,
@@ -355,8 +340,6 @@ class AkunDetailView extends GetView<AkunDetailController> {
               ),
             ),
             SizedBox(width: AppResponsive.w(3)),
-
-            // Text information
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -384,7 +367,6 @@ class AkunDetailView extends GetView<AkunDetailController> {
     );
   }
 
-  // Widget untuk form edit profil
   Widget _buildEditForm(BuildContext context) {
     return Form(
       key: controller.formKey,
@@ -392,7 +374,8 @@ class AkunDetailView extends GetView<AkunDetailController> {
         padding: AppResponsive.padding(all: 4),
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(AppResponsive.getResponsiveSize(20)),
+          borderRadius:
+              BorderRadius.circular(AppResponsive.getResponsiveSize(20)),
           boxShadow: [
             BoxShadow(
               color: AppColors.shadow.withOpacity(0.1),
@@ -409,8 +392,6 @@ class AkunDetailView extends GetView<AkunDetailController> {
               style: AppText.h5(color: AppColors.dark),
             ),
             SizedBox(height: AppResponsive.h(3)),
-
-            // Nama Lengkap
             _buildTextField(
               label: 'Nama Lengkap',
               hintText: 'Masukkan nama lengkap',
@@ -419,8 +400,6 @@ class AkunDetailView extends GetView<AkunDetailController> {
               icon: Remix.user_3_line,
             ),
             SizedBox(height: AppResponsive.h(2)),
-
-            // Email (Read-only)
             _buildTextField(
               label: 'Email',
               hintText: 'Email',
@@ -431,8 +410,6 @@ class AkunDetailView extends GetView<AkunDetailController> {
               fillColor: AppColors.muted.withOpacity(0.5),
             ),
             SizedBox(height: AppResponsive.h(2)),
-
-            // No WhatsApp
             _buildTextField(
               label: 'No. WhatsApp',
               hintText: 'Contoh: 08123456789',
@@ -442,15 +419,11 @@ class AkunDetailView extends GetView<AkunDetailController> {
               keyboardType: TextInputType.phone,
             ),
             SizedBox(height: AppResponsive.h(3)),
-
-            // Alamat
             Text(
               'Alamat',
               style: AppText.h5(color: AppColors.dark),
             ),
             SizedBox(height: AppResponsive.h(2)),
-
-            // Provinsi Dropdown
             _buildDropdownField(
               label: 'Provinsi',
               hintText: 'Pilih Provinsi',
@@ -465,8 +438,6 @@ class AkunDetailView extends GetView<AkunDetailController> {
               onChanged: controller.onProvinceChanged,
             ),
             SizedBox(height: AppResponsive.h(2)),
-
-            // Kota/Kabupaten Dropdown
             _buildDropdownField(
               label: 'Kota/Kabupaten',
               hintText: 'Pilih Kota/Kabupaten',
@@ -482,8 +453,6 @@ class AkunDetailView extends GetView<AkunDetailController> {
               enabled: controller.selectedProvinceId.value != null,
             ),
             SizedBox(height: AppResponsive.h(2)),
-
-            // Kecamatan Dropdown
             _buildDropdownField(
               label: 'Kecamatan',
               hintText: 'Pilih Kecamatan',
@@ -499,8 +468,6 @@ class AkunDetailView extends GetView<AkunDetailController> {
               enabled: controller.selectedRegencyId.value != null,
             ),
             SizedBox(height: AppResponsive.h(2)),
-
-            // Kelurahan/Desa Dropdown
             _buildDropdownField(
               label: 'Kelurahan/Desa',
               hintText: 'Pilih Kelurahan/Desa',
@@ -516,8 +483,6 @@ class AkunDetailView extends GetView<AkunDetailController> {
               enabled: controller.selectedDistrictId.value != null,
             ),
             SizedBox(height: AppResponsive.h(2)),
-
-            // Dusun
             _buildTextField(
               label: 'Dusun',
               hintText: 'Masukkan nama dusun (opsional)',
@@ -525,8 +490,6 @@ class AkunDetailView extends GetView<AkunDetailController> {
               icon: Remix.community_line,
             ),
             SizedBox(height: AppResponsive.h(2)),
-
-            // Alamat Lengkap
             _buildTextField(
               label: 'Alamat Lengkap',
               hintText: 'Masukkan alamat lengkap (RT/RW, No. Rumah, dll)',
@@ -535,8 +498,6 @@ class AkunDetailView extends GetView<AkunDetailController> {
               maxLines: 3,
             ),
             SizedBox(height: AppResponsive.h(2)),
-
-            // Kode Pos
             _buildTextField(
               label: 'Kode Pos',
               hintText: 'Masukkan kode pos',
@@ -551,7 +512,6 @@ class AkunDetailView extends GetView<AkunDetailController> {
     );
   }
 
-  // Widget untuk text field
   Widget _buildTextField({
     required String label,
     required String hintText,
@@ -582,7 +542,8 @@ class AkunDetailView extends GetView<AkunDetailController> {
           style: AppText.bodyMedium(color: AppColors.dark),
           decoration: InputDecoration(
             hintText: hintText,
-            hintStyle: AppText.bodyMedium(color: AppColors.grey.withOpacity(0.5)),
+            hintStyle:
+                AppText.bodyMedium(color: AppColors.grey.withOpacity(0.5)),
             prefixIcon: Icon(
               icon,
               color: AppColors.primary,
@@ -592,23 +553,28 @@ class AkunDetailView extends GetView<AkunDetailController> {
             fillColor: fillColor ?? AppColors.muted.withOpacity(0.3),
             contentPadding: AppResponsive.padding(vertical: 1.5, horizontal: 2),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppResponsive.getResponsiveSize(10)),
+              borderRadius:
+                  BorderRadius.circular(AppResponsive.getResponsiveSize(10)),
               borderSide: BorderSide.none,
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppResponsive.getResponsiveSize(10)),
+              borderRadius:
+                  BorderRadius.circular(AppResponsive.getResponsiveSize(10)),
               borderSide: BorderSide.none,
             ),
             focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppResponsive.getResponsiveSize(10)),
+              borderRadius:
+                  BorderRadius.circular(AppResponsive.getResponsiveSize(10)),
               borderSide: BorderSide(color: AppColors.primary, width: 1),
             ),
             errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppResponsive.getResponsiveSize(10)),
+              borderRadius:
+                  BorderRadius.circular(AppResponsive.getResponsiveSize(10)),
               borderSide: BorderSide(color: AppColors.danger, width: 1),
             ),
             focusedErrorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppResponsive.getResponsiveSize(10)),
+              borderRadius:
+                  BorderRadius.circular(AppResponsive.getResponsiveSize(10)),
               borderSide: BorderSide(color: AppColors.danger, width: 1),
             ),
           ),
@@ -617,7 +583,6 @@ class AkunDetailView extends GetView<AkunDetailController> {
     );
   }
 
-  // Widget untuk dropdown field
   Widget _buildDropdownField({
     required String label,
     required String hintText,
@@ -639,8 +604,11 @@ class AkunDetailView extends GetView<AkunDetailController> {
         SizedBox(height: AppResponsive.h(1)),
         Container(
           decoration: BoxDecoration(
-            color: enabled ? AppColors.muted.withOpacity(0.3) : AppColors.muted.withOpacity(0.5),
-            borderRadius: BorderRadius.circular(AppResponsive.getResponsiveSize(10)),
+            color: enabled
+                ? AppColors.muted.withOpacity(0.3)
+                : AppColors.muted.withOpacity(0.5),
+            borderRadius:
+                BorderRadius.circular(AppResponsive.getResponsiveSize(10)),
           ),
           child: DropdownButtonFormField<String>(
             value: value,
@@ -659,17 +627,21 @@ class AkunDetailView extends GetView<AkunDetailController> {
                 color: enabled ? AppColors.primary : AppColors.grey,
                 size: AppResponsive.getResponsiveSize(20),
               ),
-              contentPadding: AppResponsive.padding(vertical: 1.5, horizontal: 2),
+              contentPadding:
+                  AppResponsive.padding(vertical: 1.5, horizontal: 2),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppResponsive.getResponsiveSize(10)),
+                borderRadius:
+                    BorderRadius.circular(AppResponsive.getResponsiveSize(10)),
                 borderSide: BorderSide.none,
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppResponsive.getResponsiveSize(10)),
+                borderRadius:
+                    BorderRadius.circular(AppResponsive.getResponsiveSize(10)),
                 borderSide: BorderSide.none,
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(AppResponsive.getResponsiveSize(10)),
+                borderRadius:
+                    BorderRadius.circular(AppResponsive.getResponsiveSize(10)),
                 borderSide: BorderSide(color: AppColors.primary, width: 1),
               ),
             ),
@@ -677,14 +649,14 @@ class AkunDetailView extends GetView<AkunDetailController> {
             onChanged: enabled ? onChanged : null,
             isExpanded: true,
             dropdownColor: Colors.white,
-            borderRadius: BorderRadius.circular(AppResponsive.getResponsiveSize(10)),
+            borderRadius:
+                BorderRadius.circular(AppResponsive.getResponsiveSize(10)),
           ),
         ),
       ],
     );
   }
-  
-  // Widget untuk tombol simpan
+
   Widget _buildSaveButton() {
     return SizedBox(
       width: double.infinity,

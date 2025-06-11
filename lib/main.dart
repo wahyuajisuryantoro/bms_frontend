@@ -13,7 +13,7 @@ void main() async{
   await GetStorage.init();
   final storageService = Get.put(StorageService(), permanent: true);
   Get.put(FavoritController(), permanent: true);
-  final initialRoute = storageService.isLoggedIn() ? Routes.HOME : Routes.LOGIN;
+  final initialRoute = storageService.isLoggedIn() ? Routes.HOME : Routes.ONBOARDING;
   runApp(
     GetMaterialApp(
       title: "Application",

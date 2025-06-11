@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dealer_mobil/app/components/loading_animation.dart';
 import 'package:dealer_mobil/app/helpers/currency_formatter.dart';
@@ -438,43 +440,10 @@ class DetailMobilView extends GetView<DetailMobilController> {
                   ],
                 ),
                 SizedBox(height: AppResponsive.h(5)),
-                if (controller.car.containsKey('opsi_pembayaran') &&
-                    controller.car['opsi_pembayaran'] != null &&
-                    (controller.car['opsi_pembayaran'] as List).isNotEmpty)
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Icon(
-                            Remix.money_dollar_circle_line,
-                            color: AppColors.primary,
-                            size: AppResponsive.getResponsiveSize(22),
-                          ),
-                          SizedBox(width: AppResponsive.w(2)),
-                          Text(
-                            'Opsi Pembayaran',
-                            style: AppText.h5(color: AppColors.dark),
-                          ),
-                        ],
-                      ),
-                      Divider(color: AppColors.muted),
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: NeverScrollableScrollPhysics(),
-                        itemCount:
-                            (controller.car['opsi_pembayaran'] as List).length,
-                        itemBuilder: (context, index) {
-                          final opsi = (controller.car['opsi_pembayaran']
-                              as List)[index];
-                          return _buildOpsiPembayaranItem(opsi);
-                        },
-                      ),
-                      SizedBox(height: AppResponsive.h(3)),
-                      _buildSimulasiKreditSection(),
-                      SizedBox(height: AppResponsive.h(3)),
-                    ],
-                  ),
+                
+                // Updated Opsi Pembayaran Section
+                _buildOpsiPembayaranSection(),
+                
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
@@ -586,105 +555,204 @@ class DetailMobilView extends GetView<DetailMobilController> {
     );
   }
 
-  Widget _buildOpsiPembayaranItem(Map<String, dynamic> opsi) {
-    final String metode = opsi['metode'] ?? '';
+  Widget _buildOpsiPembayaranSection() {
+    // Check if opsi_kredit is available
+    final bool hasKreditOption = controller.car.containsKey('opsi_kredit') && 
+                                controller.car['opsi_kredit'] != null;
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(
+              Remix.money_dollar_circle_line,
+              color: AppColors.primary,
+              size: AppResponsive.getResponsiveSize(22),
+            ),
+            SizedBox(width: AppResponsive.w(2)),
+            Text(
+              'Opsi Pembayaran',
+              style: AppText.h5(color: AppColors.dark),
+            ),
+          ],
+        ),
+        Divider(color: AppColors.muted),
+        
+        // Cash Option
+        _buildPaymentOptionCard(
+          title: 'Pembayaran Cash',
+          subtitle: 'Bayar langsung tanpa cicilan',
+          price: controller.getFormattedPrice(),
+          icon: Remix.money_dollar_circle_fill,
+          iconColor: AppColors.success,
+          isRecommended: false,
+        ),
+        
+        SizedBox(height: AppResponsive.h(2)),
+        
+        // Credit Option (if available)
+        if (hasKreditOption) ...[
+          _buildPaymentOptionCard(
+            title: 'Pembayaran Kredit',
+            subtitle: controller.car['opsi_kredit']['nama_template'] ?? 'Paket Kredit Tersedia',
+            price: 'Mulai dari simulasi kredit',
+            icon: Remix.bank_card_fill,
+            iconColor: AppColors.primary,
+            isRecommended: true,
+            kreditInfo: controller.car['opsi_kredit'],
+          ),
+          
+          SizedBox(height: AppResponsive.h(3)),
+          _buildSimulasiKreditSection(),
+        ] else ...[
+          Container(
+            padding: EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: AppColors.muted.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.muted),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  Remix.information_line,
+                  color: AppColors.grey,
+                  size: 20,
+                ),
+                SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    'Opsi kredit tidak tersedia untuk mobil ini',
+                    style: AppText.bodyMedium(color: AppColors.grey),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+        
+        SizedBox(height: AppResponsive.h(3)),
+      ],
+    );
+  }
 
-    final dynamic hargaRaw = opsi['harga'] ?? 0;
-    final num harga =
-        hargaRaw is String ? num.tryParse(hargaRaw) ?? 0 : (hargaRaw as num);
-
-    final dynamic tenorRaw = opsi['tenor'];
-    final int? tenor = tenorRaw == null
-        ? null
-        : (tenorRaw is String ? int.tryParse(tenorRaw) : (tenorRaw as int));
-
-    final dynamic dpMinimalRaw = opsi['dp_minimal'];
-    final num? dpMinimal = dpMinimalRaw == null
-        ? null
-        : (dpMinimalRaw is String
-            ? num.tryParse(dpMinimalRaw)
-            : (dpMinimalRaw as num));
-
-    final dynamic angsuranPerBulanRaw = opsi['angsuran_per_bulan'];
-    final num? angsuranPerBulan = angsuranPerBulanRaw == null
-        ? null
-        : (angsuranPerBulanRaw is String
-            ? num.tryParse(angsuranPerBulanRaw)
-            : (angsuranPerBulanRaw as num));
-
+  Widget _buildPaymentOptionCard({
+    required String title,
+    required String subtitle,
+    required String price,
+    required IconData icon,
+    required Color iconColor,
+    required bool isRecommended,
+    Map<String, dynamic>? kreditInfo,
+  }) {
     return Container(
-      margin: AppResponsive.margin(vertical: 1),
-      padding: AppResponsive.padding(all: 2),
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius:
-            BorderRadius.circular(AppResponsive.getResponsiveSize(10)),
-        border: Border.all(color: AppColors.muted),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isRecommended ? AppColors.primary : AppColors.muted,
+          width: isRecommended ? 2 : 1,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Container(
-                padding: AppResponsive.padding(horizontal: 2, vertical: 0.5),
+                padding: EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: metode == 'Cash'
-                      ? AppColors.primary.withOpacity(0.2)
-                      : AppColors.success.withOpacity(0.2),
-                  borderRadius:
-                      BorderRadius.circular(AppResponsive.getResponsiveSize(4)),
+                  color: iconColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
                 ),
-                child: Text(
-                  metode,
-                  style: AppText.caption(
-                    color: metode == 'Cash'
-                        ? AppColors.primary
-                        : AppColors.success,
-                  ),
+                child: Icon(
+                  icon,
+                  color: iconColor,
+                  size: 24,
                 ),
               ),
-              if (tenor != null)
-                Container(
-                  padding: AppResponsive.padding(horizontal: 2, vertical: 0.5),
-                  decoration: BoxDecoration(
-                    color: AppColors.info.withOpacity(0.2),
-                    borderRadius: BorderRadius.circular(
-                        AppResponsive.getResponsiveSize(4)),
-                  ),
-                  child: Text(
-                    '$tenor bulan',
-                    style: AppText.caption(
-                      color: AppColors.info,
+              SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          title,
+                          style: AppText.bodyMediumBold(color: AppColors.dark),
+                        ),
+                        if (isRecommended) ...[
+                          SizedBox(width: 8),
+                          Container(
+                            padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              borderRadius: BorderRadius.circular(4),
+                            ),
+                            child: Text(
+                              'Direkomendasikan',
+                              style: AppText.caption(color: Colors.white),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
-                  ),
+                    SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: AppText.bodySmall(color: AppColors.grey),
+                    ),
+                  ],
                 ),
+              ),
             ],
           ),
-          SizedBox(height: AppResponsive.h(1)),
-          if (metode == 'Cash')
-            Text(
-              CurrencyFormatter.formatRupiah(harga),
-              style: AppText.bodyMedium(color: AppColors.dark),
+          
+          SizedBox(height: 12),
+          
+          Text(
+            price,
+            style: AppText.h6(color: AppColors.dark),
+          ),
+          
+          // Additional info for credit option
+          if (kreditInfo != null) ...[
+            SizedBox(height: 12),
+            Container(
+              padding: EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (kreditInfo.containsKey('tenor_tersedia') && 
+                      kreditInfo['tenor_tersedia'] is List) ...[
+                    Text(
+                      'Tenor tersedia: ${(kreditInfo['tenor_tersedia'] as List).join(', ')} bulan',
+                      style: AppText.bodySmall(color: AppColors.primary),
+                    ),
+                  ],
+                  if (kreditInfo.containsKey('dp_minimal_percentage')) ...[
+                    Text(
+                      'DP minimal: ${kreditInfo['dp_minimal_percentage']}% dari harga mobil',
+                      style: AppText.bodySmall(color: AppColors.primary),
+                    ),
+                  ],
+                ],
+              ),
             ),
-          if (metode != 'Cash') ...[
-            if (dpMinimal != null && dpMinimal > 0)
-              Padding(
-                padding: EdgeInsets.only(top: 4),
-                child: Text(
-                  'DP Minimal: ${CurrencyFormatter.formatRupiah(dpMinimal)}',
-                  style: AppText.bodySmall(color: AppColors.dark),
-                ),
-              ),
-            if (angsuranPerBulan != null && angsuranPerBulan > 0)
-              Padding(
-                padding: EdgeInsets.only(top: 4),
-                child: Text(
-                  'Angsuran: ${CurrencyFormatter.formatRupiah(angsuranPerBulan)}/bulan',
-                  style: AppText.bodySmall(color: AppColors.dark),
-                ),
-              ),
           ],
         ],
       ),
@@ -883,11 +951,11 @@ class DetailMobilView extends GetView<DetailMobilController> {
           _buildTenorOptions(),
           SizedBox(height: 16),
           Text(
-            'Pilih DP',
+            'Masukkan DP',
             style: AppText.bodyMediumBold(color: AppColors.dark),
           ),
           SizedBox(height: 8),
-          _buildDpOptions(),
+          _buildDpInput(),
           SizedBox(height: 24),
           _buildInfoCard(
             title: 'Harga OTR',
@@ -897,7 +965,7 @@ class DetailMobilView extends GetView<DetailMobilController> {
           ),
           SizedBox(height: 12),
           _buildInfoCard(
-            title: 'Total DP',
+            title: 'Total DP (${controller.getDpPercentage().toStringAsFixed(1)}%)',
             value: CurrencyFormatter.formatRupiah(simulasi['dp_amount'] ?? 0),
             icon: Remix.money_dollar_circle_line,
             iconColor: AppColors.success,
@@ -918,57 +986,7 @@ class DetailMobilView extends GetView<DetailMobilController> {
             icon: Remix.time_line,
             iconColor: AppColors.warning,
           ),
-          SizedBox(height: 12),
-          _buildInfoCard(
-            title: 'Bunga',
-            value: '${simulasi['bunga_tahunan'] ?? 0}% per tahun',
-            icon: Remix.percent_line,
-            iconColor: AppColors.danger,
-          ),
-          SizedBox(height: 24),
-          if (simulasi.containsKey('rincian_angsuran') &&
-              simulasi['rincian_angsuran'] is List &&
-              (simulasi['rincian_angsuran'] as List).isNotEmpty) ...[
-            Text(
-              'Rincian Angsuran (Bulan 1-12)',
-              style: AppText.bodyMediumBold(color: AppColors.dark),
-            ),
-            SizedBox(height: 8),
-            _buildRincianAngsuranTable(simulasi['rincian_angsuran']),
-            SizedBox(height: 16),
-            Text(
-              'Catatan: Bunga dihitung dengan metode anuitas',
-              style: AppText.caption(color: AppColors.grey),
-            ),
-          ],
-          SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () {
-                Get.snackbar(
-                  'Ajukan Kredit',
-                  'Fitur ini akan menghubungkan Anda dengan dealer',
-                  backgroundColor: AppColors.primary,
-                  colorText: Colors.white,
-                  snackPosition: SnackPosition.BOTTOM,
-                  margin: EdgeInsets.all(20),
-                  duration: Duration(seconds: 2),
-                );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                padding: EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Text(
-                'Ajukan Kredit Sekarang',
-                style: AppText.bodyMediumBold(color: Colors.white),
-              ),
-            ),
-          ),
+    
         ],
       ),
     );
@@ -1010,42 +1028,202 @@ class DetailMobilView extends GetView<DetailMobilController> {
     );
   }
 
-  Widget _buildDpOptions() {
-    return Container(
-      height: 40,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: controller.dpOptions.length,
-        itemBuilder: (context, index) {
-          final option = controller.dpOptions[index];
-          final isSelected =
-              controller.selectedDp.value == option['percentage'];
+// Update _buildDpInput method di DetailMobilView.dart untuk parsing yang benar
+// Update UI _buildDpInput untuk trigger yang lebih santai
 
-          return GestureDetector(
-            onTap: () => controller.changeDp(option['percentage'].toDouble()),
-            child: Container(
-              margin: EdgeInsets.only(right: 8),
-              padding: EdgeInsets.symmetric(horizontal: 16),
-              decoration: BoxDecoration(
-                color: isSelected ? AppColors.primary : Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: isSelected ? AppColors.primary : AppColors.muted,
+Widget _buildDpInput() {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Container(
+        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: AppColors.muted),
+        ),
+        child: Row(
+          children: [
+            Text(
+              'Rp',
+              style: AppText.bodyMedium(color: AppColors.dark),
+            ),
+            SizedBox(width: 8),
+            Expanded(
+              child: TextFormField(
+                controller: controller.dpController,
+                keyboardType: TextInputType.number,
+                decoration: InputDecoration(
+                  hintText: 'Masukkan jumlah DP',
+                  border: InputBorder.none,
+                  hintStyle: AppText.bodySmall(color: AppColors.grey),
                 ),
-              ),
-              alignment: Alignment.center,
-              child: Text(
-                option['label'],
-                style: AppText.bodySmall(
-                  color: isSelected ? Colors.white : AppColors.dark,
-                ),
+                style: AppText.bodyMedium(color: AppColors.dark),
+                onChanged: (value) {
+                  // Format input dengan pemisah ribuan
+                  String formatted = value.replaceAll(RegExp(r'[^0-9]'), '');
+                  if (formatted.isNotEmpty) {
+                    try {
+                      final number = int.parse(formatted);
+                      final formattedText = number.toString().replaceAllMapped(
+                        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                        (Match m) => '${m[1]}.',
+                      );
+                      
+                      if (formattedText != value) {
+                        controller.dpController.value = TextEditingValue(
+                          text: formattedText,
+                          selection: TextSelection.collapsed(offset: formattedText.length),
+                        );
+                      }
+                      
+                      final cleanValue = formatted;
+                      final amount = controller.parseToDouble(cleanValue);
+                      controller.selectedDpAmount.value = amount;
+
+                      
+                    } catch (e) {
+                      print('Error formatting number: $e');
+                    }
+                  } else {
+
+                    controller.selectedDpAmount.value = 0.0;
+                  }
+                },
+                onFieldSubmitted: (value) {
+                  // Trigger hanya saat user tekan Enter dan input valid
+                  final cleanValue = value.replaceAll(RegExp(r'[^0-9]'), '');
+                  final amount = controller.parseToDouble(cleanValue);
+                  if (amount > 0 && controller.selectedTenor.value > 0) {
+                    controller.hitungSimulasiKredit();
+                  }
+                },
               ),
             ),
-          );
-        },
+            // Tombol untuk trigger manual
+            IconButton(
+              onPressed: () {
+                controller.triggerSimulasiKredit();
+              },
+              icon: Icon(
+                Remix.calculator_line,
+                color: AppColors.primary,
+                size: 20,
+              ),
+              tooltip: 'Hitung Simulasi',
+            ),
+          ],
+        ),
       ),
-    );
-  }
+      SizedBox(height: 8),
+      Obx(() => controller.dpValidationInfo.isNotEmpty
+          ? Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Pilihan Cepat:',
+                  style: AppText.caption(color: AppColors.grey),
+                ),
+                SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 4,
+                  children: [10, 15, 20, 25, 30].map((percentage) {
+                    final hargaOtrRaw = controller.dpValidationInfo['harga_otr'];
+                    final hargaOtr = controller.parseToDouble(hargaOtrRaw);
+                    final amount = (hargaOtr * percentage) / 100;
+                    final isSelected = (controller.selectedDpAmount.value - amount).abs() < 1000;
+                    
+                    return GestureDetector(
+                      onTap: () {
+                        controller.selectedDpAmount.value = amount;
+                        try {
+                          controller.dpController.text = amount.toInt().toString().replaceAllMapped(
+                            RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                            (Match m) => '${m[1]}.',
+                          );
+                          if (controller.selectedTenor.value > 0) {
+                            controller.hitungSimulasiKredit();
+                          }
+                        } catch (e) {
+                          print('Error setting DP amount: $e');
+                        }
+                      },
+                      child: Container(
+                        padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: isSelected ? AppColors.primary : Colors.white,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isSelected ? AppColors.primary : AppColors.muted,
+                          ),
+                        ),
+                        child: Text(
+                          '$percentage%',
+                          style: AppText.bodySmall(
+                            color: isSelected ? Colors.white : AppColors.dark,
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            )
+          : SizedBox.shrink()),
+      
+      SizedBox(height: 16),
+      
+      // Manual trigger button (primary way to calculate)
+      Center(
+        child: Obx(() => ElevatedButton.icon(
+              onPressed: controller.isLoadingSimulasi.value 
+                  ? null 
+                  : () {
+                      if (controller.selectedTenor.value > 0 && controller.selectedDpAmount.value > 0) {
+                        controller.hitungSimulasiKredit();
+                      } else {
+                        Get.snackbar(
+                          'Info',
+                          'Silakan pilih tenor dan masukkan jumlah DP terlebih dahulu',
+                          backgroundColor: AppColors.info,
+                          colorText: Colors.white,
+                          duration: Duration(seconds: 2),
+                        );
+                      }
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                padding: EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
+              icon: controller.isLoadingSimulasi.value
+                  ? SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    )
+                  : Icon(
+                      Remix.calculator_line,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+              label: Text(
+                controller.isLoadingSimulasi.value 
+                    ? 'Menghitung...' 
+                    : 'Hitung Simulasi Kredit',
+                style: AppText.bodyMedium(color: Colors.white),
+              ),
+            )),
+      ),
+    ],
+  );
+}
 
   Widget _buildInfoCard({
     required String title,
@@ -1099,99 +1277,6 @@ class DetailMobilView extends GetView<DetailMobilController> {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildRincianAngsuranTable(List<dynamic> rincianAngsuran) {
-    return Container(
-      decoration: BoxDecoration(
-        border: Border.all(color: AppColors.muted),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        child: DataTable(
-          headingRowColor:
-              MaterialStateProperty.all(AppColors.muted.withOpacity(0.2)),
-          dataRowMaxHeight: 60,
-          dataRowMinHeight: 48,
-          columnSpacing: 16,
-          horizontalMargin: 12,
-          columns: [
-            DataColumn(
-              label: Text(
-                'Bulan',
-                style: AppText.smallBold(color: AppColors.dark),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'Angsuran',
-                style: AppText.smallBold(color: AppColors.dark),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'Pokok',
-                style: AppText.smallBold(color: AppColors.dark),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'Bunga',
-                style: AppText.smallBold(color: AppColors.dark),
-              ),
-            ),
-            DataColumn(
-              label: Text(
-                'Sisa Pokok',
-                style: AppText.smallBold(color: AppColors.dark),
-              ),
-            ),
-          ],
-          rows: List.generate(
-            rincianAngsuran.length,
-            (index) {
-              final rincian = rincianAngsuran[index];
-              return DataRow(
-                cells: [
-                  DataCell(
-                    Text(
-                      '${rincian['bulan']}',
-                      style: AppText.bodySmall(color: AppColors.dark),
-                    ),
-                  ),
-                  DataCell(
-                    Text(
-                      CurrencyFormatter.formatRupiah(rincian['angsuran'] ?? 0),
-                      style: AppText.bodySmall(color: AppColors.dark),
-                    ),
-                  ),
-                  DataCell(
-                    Text(
-                      CurrencyFormatter.formatRupiah(rincian['pokok'] ?? 0),
-                      style: AppText.bodySmall(color: AppColors.dark),
-                    ),
-                  ),
-                  DataCell(
-                    Text(
-                      CurrencyFormatter.formatRupiah(rincian['bunga'] ?? 0),
-                      style: AppText.bodySmall(color: AppColors.dark),
-                    ),
-                  ),
-                  DataCell(
-                    Text(
-                      CurrencyFormatter.formatRupiah(
-                          rincian['sisa_pokok'] ?? 0),
-                      style: AppText.bodySmall(color: AppColors.dark),
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
-        ),
       ),
     );
   }

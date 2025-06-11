@@ -20,9 +20,6 @@ class HomeController extends GetxController {
   final isLoadingBrands = false.obs;
   final isLoadingTransmissions = false.obs;
   final isLoadingCars = false.obs;
-
-  final location = 'Bali, Indonesia'.obs;
-
   final searchQuery = ''.obs;
   final isSearching = false.obs;
   final filteredCarListings = <Map<String, dynamic>>[].obs;
@@ -34,17 +31,85 @@ class HomeController extends GetxController {
   final selectedTransmissionId = RxnInt();
 
   DateTime? lastBackPressTime;
+  final RxBool isInitialLoad = true.obs;
+  final RxBool isRefreshing = false.obs;
 
   @override
   void onInit() {
     super.onInit();
     getUserData();
-    fetchMerkMobil();
-    fetchTransmisi();
-    fetchMobilDashboard();
+    loadData();
   }
 
-  // Mendapatkan data user dari storage
+  @override
+  void onReady() {
+    super.onReady();
+    isInitialLoad.value = false;
+  }
+
+  Future<void> loadData({bool forceRefresh = false}) async {
+    if (forceRefresh) {
+      await storageService.forceRefreshCarData();
+      isRefreshing.value = true;
+    }
+
+    // Load brands
+    await _loadBrandsWithCache(forceRefresh: forceRefresh);
+    
+    // Load transmissions
+    await _loadTransmissionsWithCache(forceRefresh: forceRefresh);
+    
+    // Load car listings
+    await _loadCarListingsWithCache(forceRefresh: forceRefresh);
+
+    isRefreshing.value = false;
+  }
+
+  Future<void> _loadBrandsWithCache({bool forceRefresh = false}) async {
+    if (!forceRefresh) {
+      final cachedBrands = storageService.getCachedBrands();
+      if (cachedBrands != null) {
+        brands.value = cachedBrands;
+        return;
+      }
+    }
+    await fetchMerkMobil();
+  }
+
+  Future<void> _loadTransmissionsWithCache({bool forceRefresh = false}) async {
+    if (!forceRefresh) {
+      final cachedTransmissions = storageService.getCachedTransmissions();
+      if (cachedTransmissions != null) {
+        transmissions.value = cachedTransmissions;
+        return;
+      }
+    }
+
+    await fetchTransmisi();
+  }
+  Future<void> _loadCarListingsWithCache({bool forceRefresh = false}) async {
+    if (!forceRefresh) {
+      final cachedCarListings = storageService.getCachedCarListings();
+      if (cachedCarListings != null) {
+        carListings.value = cachedCarListings;
+        return;
+      }
+    }
+
+    await fetchMobilDashboard();
+  }
+  Future<void> refreshData() async {
+    await loadData(forceRefresh: true);
+    
+    Get.snackbar(
+      'Berhasil',
+      'Data telah diperbarui',
+      backgroundColor: AppColors.primary,
+      colorText: Colors.white,
+      snackPosition: SnackPosition.TOP,
+      duration: Duration(seconds: 2),
+    );
+  }
   void getUserData() {
     try {
       String? name = storageService.getName();
@@ -75,6 +140,7 @@ class HomeController extends GetxController {
           'Authorization': 'Bearer $token',
         },
       );
+
       if (response.statusCode == 200) {
         final Map<String, dynamic> responseData = jsonDecode(response.body);
 
@@ -83,16 +149,22 @@ class HomeController extends GetxController {
           brands.clear();
           List<dynamic> merkList = responseData['data'];
 
-          brands.value = merkList.map((merk) {
+          final brandsList = merkList.map((merk) {
             return {
               'name': merk['nama_merk'],
               'image': merk['foto_merk'] ?? 'assets/images/car_placeholder.png',
               'id': merk['id']
             };
           }).toList();
-        } else {}
-      } else {}
+
+          brands.value = brandsList;
+          
+          // Simpan ke cache
+          await storageService.saveBrands(brandsList);
+        }
+      }
     } catch (e) {
+      print('Error fetching brands: $e');
     } finally {
       isLoadingBrands.value = false;
     }
@@ -118,7 +190,7 @@ class HomeController extends GetxController {
           List<dynamic> list = responseData['data'];
           bool isFirst = true;
 
-          transmissions.value = list.map((item) {
+          final transmissionsList = list.map((item) {
             bool selected = isFirst;
             if (isFirst) isFirst = false;
 
@@ -128,10 +200,15 @@ class HomeController extends GetxController {
               'isSelected': selected
             };
           }).toList();
+
+          transmissions.value = transmissionsList;
+          
+          // Simpan ke cache
+          await storageService.saveTransmissions(transmissionsList);
         }
       }
     } catch (e) {
-      print(e);
+      print('Error fetching transmissions: $e');
     } finally {
       isLoadingTransmissions.value = false;
     }
@@ -169,8 +246,6 @@ class HomeController extends GetxController {
             if (!carMap.containsKey('transmisi_id') ||
                 carMap['transmisi_id'] == null) {
               String transmisiName = carMap['transmisi'] ?? '';
-
-              // Cari ID transmisi berdasarkan nama
               for (var transmission in transmissions) {
                 if (transmission['name'] == transmisiName) {
                   carMap['transmisi_id'] = transmission['id'];
@@ -181,9 +256,8 @@ class HomeController extends GetxController {
 
             processedCars.add(carMap);
           }
-
           carListings.value = processedCars;
-
+          await storageService.saveCarListings(processedCars);
           print('Processed Car Listings: ${carListings.length}');
           if (carListings.isNotEmpty) {
             print('Sample car: ${carListings[0]}');
@@ -197,6 +271,19 @@ class HomeController extends GetxController {
     }
   }
 
+  bool shouldAutoRefresh() {
+    return !storageService.isCarListingsCacheValid() ||
+           !storageService.isBrandsCacheValid() ||
+           !storageService.isTransmissionsCacheValid();
+  }
+
+  // Method yang dipanggil ketika user kembali ke halaman home
+  void onHomePageResumed() {
+    if (shouldAutoRefresh()) {
+      print('Cache expired, refreshing data...');
+      loadData(forceRefresh: true);
+    }
+  }
 
   // Method untuk logout
   void logout() async {
